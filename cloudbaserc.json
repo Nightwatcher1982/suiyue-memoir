@@ -21,7 +21,8 @@
       ],
       "envVariables": {
         "NEXT_PUBLIC_CLOUDBASE_ENV_ID": "suiyue-memoir-dev-3e9aoud20837ef",
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "QIANWEN_API_KEY": "sk-c93c5888d56348d19e4857492a456214"
       },
       "healthCheck": {
         "path": "/health",

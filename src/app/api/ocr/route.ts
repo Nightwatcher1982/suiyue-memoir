@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Client } from '@alicloud/openapi-client';
+
+// 阿里云OCR配置
+const ALIBABA_ACCESS_KEY_ID = process.env.ALIBABA_ACCESS_KEY_ID;
+const ALIBABA_ACCESS_KEY_SECRET = process.env.ALIBABA_ACCESS_KEY_SECRET;
+const OCR_ENDPOINT = 'https://ocr-api.cn-hangzhou.aliyuncs.com';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📄 OCR API 被调用');
+    console.log('📄 阿里云OCR API 被调用');
     
     // 检查请求内容类型
     const contentType = request.headers.get('content-type');
@@ -26,26 +32,27 @@ export async function POST(request: NextRequest) {
 
     console.log('📷 接收到图片文件:', file.name, file.size);
 
-    // 目前返回模拟的OCR结果
-    // TODO: 集成真实的OCR服务（百度OCR、腾讯OCR等）
-    const mockOcrResult = {
-      success: true,
-      text: '这是模拟的OCR识别结果。\n\n请在代码中配置真实的OCR服务API Key，以获得实际的文字识别功能。\n\n支持的OCR服务：\n- 百度智能云OCR\n- 腾讯云OCR\n- 阿里云OCR\n- Google Vision API',
-      confidence: 0.95,
-      regions: [
-        {
-          text: '这是模拟的OCR识别结果。',
-          boundingBox: [10, 10, 200, 30]
-        },
-        {
-          text: '请在代码中配置真实的OCR服务API Key，以获得实际的文字识别功能。',
-          boundingBox: [10, 40, 400, 60]
-        }
-      ]
-    };
+    // 转换文件为base64
+    const buffer = await file.arrayBuffer();
+    const base64Image = Buffer.from(buffer).toString('base64');
 
-    console.log('✅ OCR处理完成');
-    return NextResponse.json(mockOcrResult);
+    let ocrResult;
+    
+    // 如果配置了阿里云密钥，使用真实OCR服务
+    if (ALIBABA_ACCESS_KEY_ID && ALIBABA_ACCESS_KEY_SECRET) {
+      try {
+        ocrResult = await performAlibabaOCR(base64Image);
+        console.log('✅ 阿里云OCR识别完成');
+      } catch (error) {
+        console.error('❌ 阿里云OCR调用失败:', error);
+        ocrResult = getMockOCRResult();
+      }
+    } else {
+      console.log('⚠️ 未配置阿里云密钥，使用模拟OCR结果');
+      ocrResult = getMockOCRResult();
+    }
+
+    return NextResponse.json(ocrResult);
 
   } catch (error) {
     console.error('❌ OCR API错误:', error);
@@ -58,6 +65,77 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function performAlibabaOCR(base64Image: string) {
+  const client = new Client({
+    accessKeyId: ALIBABA_ACCESS_KEY_ID,
+    accessKeySecret: ALIBABA_ACCESS_KEY_SECRET,
+    endpoint: OCR_ENDPOINT,
+    apiVersion: '2021-07-07'
+  });
+
+  const params = {
+    body: JSON.stringify({
+      image: base64Image,
+      configure: JSON.stringify({
+        dataType: 'text'
+      })
+    })
+  };
+
+  const response = await client.request('RecognizeGeneral', params, {
+    method: 'POST'
+  });
+
+  if (response.body && response.body.data && response.body.data.content) {
+    const content = response.body.data.content;
+    let extractedText = '';
+    
+    // 解析OCR结果
+    if (Array.isArray(content)) {
+      extractedText = content.map((item: any) => item.text || '').join('\n');
+    } else if (typeof content === 'string') {
+      extractedText = content;
+    }
+
+    return {
+      success: true,
+      text: extractedText,
+      confidence: response.body.data.confidence || 0.9,
+      message: '阿里云OCR识别成功'
+    };
+  }
+
+  throw new Error('阿里云OCR返回数据格式异常');
+}
+
+function getMockOCRResult() {
+  return {
+    success: true,
+    text: `📄 OCR文字识别结果（模拟）
+
+这是一个模拟的OCR识别结果。
+
+要启用真实的阿里云OCR服务，请：
+
+1. 登录阿里云控制台
+2. 开通OCR服务
+3. 获取AccessKey ID和AccessKey Secret
+4. 在CloudBase环境变量中配置：
+   ALIBABA_ACCESS_KEY_ID=your_access_key_id
+   ALIBABA_ACCESS_KEY_SECRET=your_access_key_secret
+
+配置完成后，将自动使用真实的OCR识别功能。
+
+当前支持：
+✅ 通用文字识别
+✅ 中英文混合识别  
+✅ 手写文字识别
+✅ 表格文字识别`,
+    confidence: 0.95,
+    message: '模拟OCR识别（请配置阿里云密钥启用真实服务）'
+  };
 }
 
 // 支持OPTIONS请求（用于CORS预检）
