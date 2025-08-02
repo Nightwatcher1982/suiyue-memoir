@@ -58,7 +58,8 @@ export function useAuthState() {
 
   const sendSmsCode = async (phone: string): Promise<boolean> => {
     try {
-      console.log('📱 使用CloudBase v2发送短信验证码到:', phone);
+      console.log('📱 首页发送短信验证码到:', phone);
+      console.log('🔍 当前页面域名:', typeof window !== 'undefined' ? window.location.origin : 'unknown');
       
       // 验证手机号格式
       const { authService, AuthService } = await import('@/lib/cloudbase/auth');
@@ -67,12 +68,14 @@ export function useAuthState() {
         return false;
       }
       
+      console.log('🔄 调用authService.sendSMSCode...');
       const result = await authService.sendSMSCode(phone);
+      console.log('📋 发送结果:', result);
       
       if (result.success) {
         // 保存验证信息供后续登录使用
         setVerificationInfo(result.verificationInfo);
-        console.log('✅ CloudBase v2短信验证码发送成功，verificationInfo已保存');
+        console.log('✅ CloudBase v2短信验证码发送成功，verificationInfo已保存:', result.verificationInfo);
         return true;
       } else {
         console.error('❌ CloudBase短信发送失败:', result.message);
@@ -80,7 +83,8 @@ export function useAuthState() {
         return false;
       }
     } catch (error) {
-      console.error('发送短信验证码失败:', error);
+      console.error('❌ 首页发送短信验证码异常:', error);
+      console.error('❌ 错误详情:', JSON.stringify(error, null, 2));
       alert('发送验证码失败，请检查网络连接');
       return false;
     }
@@ -88,11 +92,14 @@ export function useAuthState() {
 
   const login = async (phone: string, code: string): Promise<boolean> => {
     try {
-      console.log('📱 使用CloudBase v2手机验证码登录:', phone, code);
+      console.log('📱 首页手机验证码登录:', phone, code);
+      console.log('🔍 使用的verificationInfo:', verificationInfo);
       
       // 使用CloudBase v2进行手机验证码登录，传入之前保存的verificationInfo
       const { authService } = await import('@/lib/cloudbase/auth');
+      console.log('🔄 调用authService.signInWithPhoneCode...');
       const loginResult = await authService.signInWithPhoneCode(phone, code, verificationInfo);
+      console.log('📋 登录结果:', loginResult);
       
       if (!loginResult.success) {
         console.error('❌ CloudBase登录失败:', loginResult.message);
@@ -123,10 +130,18 @@ export function useAuthState() {
       // 清除验证信息
       setVerificationInfo(null);
       console.log('🎉 登录成功:', newUser);
+      
+      // 触发页面重新渲染，确保所有组件能获取到最新的用户状态
+      setTimeout(() => {
+        console.log('🔄 强制更新页面状态');
+        setUser({...newUser}); // 触发重新渲染
+      }, 100);
+      
       return true;
 
     } catch (error) {
-      console.error('手机登录失败:', error);
+      console.error('❌ 首页手机登录异常:', error);
+      console.error('❌ 错误详情:', JSON.stringify(error, null, 2));
       alert('登录失败，请重试');
       return false;
     }

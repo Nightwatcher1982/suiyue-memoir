@@ -63,8 +63,14 @@ export default function DebugCloudBasePage() {
     
     try {
       addLog('📱 测试短信权限...');
+      addLog('🔍 当前页面域名: ' + (typeof window !== 'undefined' ? window.location.origin : 'unknown'));
       
       const auth = getAuth();
+      
+      // 检查auth实例的详细信息
+      addLog('🔍 Auth实例详情:');
+      addLog(`- 构造函数: ${auth.constructor.name}`);
+      addLog(`- 版本信息: ${JSON.stringify(auth._config || 'unknown')}`);
       
       // 尝试调用getVerification，但使用一个不会真正发送的测试号码
       try {
@@ -79,6 +85,15 @@ export default function DebugCloudBasePage() {
         addLog(`📋 错误消息: ${error.message || 'unknown'}`);
         addLog(`📋 HTTP状态: ${error.status || 'unknown'}`);
         addLog(`📋 完整错误: ${JSON.stringify(error, null, 2)}`);
+        
+        // 检查是否为CORS问题
+        if (error.error === 'permission_denied' && error.error_description?.includes('cors')) {
+          addLog('🔍 CORS权限问题检测到');
+          addLog('💡 建议检查CloudBase控制台:');
+          addLog('   1. 身份验证 → 配置 → 安全域名');
+          addLog('   2. 身份验证 → API访问 → Web端访问权限');
+          addLog('   3. 身份验证 → 短信验证码 → 服务状态');
+        }
       }
       
     } catch (error) {

@@ -64,8 +64,11 @@ function DashboardContent() {
   // 用户登录状态变化时加载数据
   useEffect(() => {
     if (user) {
+      console.log('✅ 用户已登录，加载工作台数据:', user);
+      setShowLoginModal(false); // 确保关闭登录框
       loadUserData();
     } else if (!loading) {
+      console.log('❌ 用户未登录，显示登录框');
       setShowLoginModal(true);
     }
   }, [user, loading, loadUserData]);
@@ -324,6 +327,10 @@ function DashboardContent() {
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
+        onSuccess={() => {
+          console.log('🎉 工作台登录成功，关闭登录框');
+          setShowLoginModal(false);
+        }}
       />
       
       <CreateProjectModal
