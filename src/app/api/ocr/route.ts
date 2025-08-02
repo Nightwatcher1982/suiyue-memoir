@@ -5,6 +5,7 @@ import Client from '@alicloud/openapi-client';
 const ALIBABA_ACCESS_KEY_ID = process.env.ALIBABA_ACCESS_KEY_ID;
 const ALIBABA_ACCESS_KEY_SECRET = process.env.ALIBABA_ACCESS_KEY_SECRET;
 const OCR_ENDPOINT = 'https://ocr-api.cn-hangzhou.aliyuncs.com';
+const OCR_REGION = 'cn-hangzhou';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,14 +39,21 @@ export async function POST(request: NextRequest) {
 
     let ocrResult;
     
+    // 检查环境变量配置
+    console.log('🔍 检查阿里云OCR配置:');
+    console.log('- ALIBABA_ACCESS_KEY_ID:', ALIBABA_ACCESS_KEY_ID ? '已配置' : '未配置');
+    console.log('- ALIBABA_ACCESS_KEY_SECRET:', ALIBABA_ACCESS_KEY_SECRET ? '已配置' : '未配置');
+    
     // 如果配置了阿里云密钥，使用真实OCR服务
     if (ALIBABA_ACCESS_KEY_ID && ALIBABA_ACCESS_KEY_SECRET) {
       try {
+        console.log('🚀 使用阿里云OCR真实服务');
         ocrResult = await performAlibabaOCR(base64Image);
         console.log('✅ 阿里云OCR识别完成');
       } catch (error) {
-        console.error('❌ 阿里云OCR调用失败:', error);
+        console.error('❌ 阿里云OCR调用失败，回退到模拟服务:', error);
         ocrResult = getMockOCRResult();
+        ocrResult.message += ' (阿里云OCR调用失败，使用模拟结果)';
       }
     } else {
       console.log('⚠️ 未配置阿里云密钥，使用模拟OCR结果');
@@ -68,46 +76,85 @@ export async function POST(request: NextRequest) {
 }
 
 async function performAlibabaOCR(base64Image: string) {
-  const client = new Client({
-    accessKeyId: ALIBABA_ACCESS_KEY_ID,
-    accessKeySecret: ALIBABA_ACCESS_KEY_SECRET,
-    endpoint: OCR_ENDPOINT,
-    apiVersion: '2021-07-07'
-  });
-
-  const params = {
-    body: JSON.stringify({
-      image: base64Image,
-      configure: JSON.stringify({
-        dataType: 'text'
-      })
-    })
-  };
-
-  const response = await client.request('RecognizeGeneral', params, {
-    method: 'POST'
-  });
-
-  if (response.body && response.body.data && response.body.data.content) {
-    const content = response.body.data.content;
-    let extractedText = '';
+  try {
+    console.log('🔧 初始化阿里云OCR客户端');
     
-    // 解析OCR结果
-    if (Array.isArray(content)) {
-      extractedText = content.map((item: any) => item.text || '').join('\n');
-    } else if (typeof content === 'string') {
-      extractedText = content;
+    const client = new Client({
+      accessKeyId: ALIBABA_ACCESS_KEY_ID,
+      accessKeySecret: ALIBABA_ACCESS_KEY_SECRET,
+      endpoint: OCR_ENDPOINT,
+      apiVersion: '2021-07-07'
+    });
+
+    console.log('📤 调用阿里云OCR API');
+    
+    // 使用正确的阿里云OCR API格式
+    const requestParams = {
+      RegionId: OCR_REGION,
+      ImageURL: `data:image/jpeg;base64,${base64Image}`,
+      ImageType: 'BASE64'
+    };
+
+    const response = await client.request('RecognizeGeneral', requestParams, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('📋 阿里云OCR响应:', JSON.stringify(response, null, 2));
+
+    // 解析阿里云OCR响应
+    if (response && response.body) {
+      const responseBody = response.body;
+      
+      // 检查不同可能的响应格式
+      let ocrData = null;
+      if (responseBody.Data) {
+        ocrData = responseBody.Data;
+      } else if (responseBody.data) {
+        ocrData = responseBody.data;
+      } else if (responseBody.Content) {
+        ocrData = responseBody.Content;
+      }
+
+      if (ocrData) {
+        let extractedText = '';
+        
+        // 处理不同的数据格式
+        if (Array.isArray(ocrData)) {
+          extractedText = ocrData.map((item: any) => {
+            return item.text || item.Text || item.content || item.Content || '';
+          }).filter(Boolean).join('\n');
+        } else if (typeof ocrData === 'string') {
+          extractedText = ocrData;
+        } else if (ocrData.content || ocrData.Content) {
+          const content = ocrData.content || ocrData.Content;
+          if (Array.isArray(content)) {
+            extractedText = content.map((item: any) => item.text || item.Text || '').filter(Boolean).join('\n');
+          } else {
+            extractedText = String(content);
+          }
+        }
+
+        if (extractedText) {
+          return {
+            success: true,
+            text: extractedText,
+            confidence: responseBody.Confidence || responseBody.confidence || 0.9,
+            message: '阿里云OCR识别成功',
+            rawResponse: responseBody // 保留原始响应用于调试
+          };
+        }
+      }
     }
 
-    return {
-      success: true,
-      text: extractedText,
-      confidence: response.body.data.confidence || 0.9,
-      message: '阿里云OCR识别成功'
-    };
-  }
+    throw new Error('阿里云OCR未返回可识别的文本内容');
 
-  throw new Error('阿里云OCR返回数据格式异常');
+  } catch (error) {
+    console.error('❌ 阿里云OCR调用详细错误:', error);
+    throw new Error(`阿里云OCR调用失败: ${error instanceof Error ? error.message : '未知错误'}`);
+  }
 }
 
 function getMockOCRResult() {
