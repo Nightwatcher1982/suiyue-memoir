@@ -22,6 +22,16 @@
       "envVariables": {
         "NEXT_PUBLIC_CLOUDBASE_ENV_ID": "suiyue-memoir-dev-3e9aoud20837ef",
         "NODE_ENV": "production"
+      },
+      "healthCheck": {
+        "path": "/health",
+        "port": 8080,
+        "protocol": "HTTP",
+        "initialDelaySeconds": 30,
+        "periodSeconds": 10,
+        "timeoutSeconds": 5,
+        "successThreshold": 1,
+        "failureThreshold": 3
       }
     }
   }
