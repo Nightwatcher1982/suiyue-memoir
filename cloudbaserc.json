@@ -2,21 +2,27 @@
   "envId": "suiyue-memoir-dev-3e9aoud20837ef",
   "version": "2.0",
   "framework": {
-    "name": "@cloudbase/framework-plugin-nextjs",
-    "use": "@cloudbase/framework-plugin-nextjs",
+    "name": "@cloudbase/framework-plugin-container",
+    "use": "@cloudbase/framework-plugin-container",
     "inputs": {
-      "buildCommand": "npm run build",
-      "outputPath": ".next",
-      "installCommand": "npm install",
-      "cloudPath": "/",
-      "runtime": "Nodejs18",
+      "serviceName": "suiyue-memoir",
+      "servicePath": "/",
+      "dockerfilePath": "./Dockerfile",
+      "containerPort": 80,
+      "buildCommand": "",
       "ignore": [
         ".git",
         ".github", 
         "node_modules",
         ".env*",
-        "*.log"
-      ]
+        "*.log",
+        "dist",
+        ".next"
+      ],
+      "envVariables": {
+        "NEXT_PUBLIC_CLOUDBASE_ENV_ID": "suiyue-memoir-dev-3e9aoud20837ef",
+        "NODE_ENV": "production"
+      }
     }
   }
 }

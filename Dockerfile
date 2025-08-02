@@ -44,14 +44,22 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy startup script
+COPY --chown=nextjs:nodejs start.sh ./
+RUN chmod +x start.sh
+
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 80
 
-ENV PORT 3000
+ENV PORT 80
 # set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
 
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:80/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"]
+CMD ["./start.sh"]
