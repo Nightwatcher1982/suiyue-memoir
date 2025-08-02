@@ -123,6 +123,13 @@ export class AuthService {
       
     } catch (error: any) {
       console.error('❌ CloudBase短信发送失败:', error);
+      console.error('❌ 错误详细信息:', {
+        message: error.message,
+        code: error.code,
+        status: error.status,
+        response: error.response,
+        stack: error.stack
+      });
       
       // 处理CloudBase特定的错误
       let errorMessage = '发送验证码失败，请稍后重试';
@@ -135,6 +142,8 @@ export class AuthService {
           errorMessage = '发送过于频繁，请等待1分钟后重试';
         } else if (message.includes('invalid')) {
           errorMessage = '手机号格式不正确';
+        } else if (error.status === 403) {
+          errorMessage = '权限被拒绝：请检查CloudBase短信服务配置和域名白名单';
         } else {
           switch (error.code) {
             case 'INVALID_PARAM':
@@ -145,6 +154,10 @@ export class AuthService {
               break;
             case 'QUOTA_EXCEEDED':
               errorMessage = '发送过于频繁，请稍后再试';
+              break;
+            case 'PERMISSION_DENIED':
+            case 'FORBIDDEN':
+              errorMessage = '权限不足：请检查CloudBase短信服务是否已开通';
               break;
             default:
               errorMessage = error.message || errorMessage;
