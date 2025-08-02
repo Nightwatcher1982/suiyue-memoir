@@ -1,0 +1,22 @@
+{
+  "envId": "suiyue-memoir-dev-3e9aoud20837ef",
+  "version": "2.0",
+  "framework": {
+    "name": "@cloudbase/framework-plugin-nextjs",
+    "use": "@cloudbase/framework-plugin-nextjs",
+    "inputs": {
+      "buildCommand": "npm run build",
+      "outputPath": ".next",
+      "installCommand": "npm install",
+      "cloudPath": "/",
+      "runtime": "Nodejs18",
+      "ignore": [
+        ".git",
+        ".github", 
+        "node_modules",
+        ".env*",
+        "*.log"
+      ]
+    }
+  }
+}

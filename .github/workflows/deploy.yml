@@ -1,0 +1,37 @@
+name: Deploy to CloudBase
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build project
+      run: npm run build
+      env:
+        NEXT_PUBLIC_CLOUDBASE_ENV_ID: ${{ secrets.CLOUDBASE_ENV_ID }}
+        
+    - name: Deploy to CloudBase
+      uses: TencentCloudBase/cloudbase-action@v2
+      with:
+        secretId: ${{ secrets.TENCENT_SECRET_ID }}
+        secretKey: ${{ secrets.TENCENT_SECRET_KEY }}
+        envId: ${{ secrets.CLOUDBASE_ENV_ID }}
+        staticSrcPath: .next
