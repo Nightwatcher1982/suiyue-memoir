@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Client } from '@alicloud/openapi-client';
+import Client from '@alicloud/openapi-client';
 
 // 阿里云OCR配置
 const ALIBABA_ACCESS_KEY_ID = process.env.ALIBABA_ACCESS_KEY_ID;
