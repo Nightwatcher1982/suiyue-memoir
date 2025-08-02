@@ -129,7 +129,7 @@ export default function DebugCloudBasePage() {
             <ul className="text-sm text-yellow-700 space-y-1">
               <li>• CloudBase控制台 → 身份验证 → 手机号登录已开通</li>
               <li>• 短信模板和签名已审核通过</li>
-              <li>• 安全域名已添加：{window.location.origin}</li>
+              <li>• 安全域名已添加：{typeof window !== 'undefined' ? window.location.origin : 'https://suiyue-memoir-dev-3e9aoud20837ef.tcloudbaseapp.com'}</li>
               <li>• 短信服务余额充足</li>
               <li>• 环境ID配置正确</li>
             </ul>
