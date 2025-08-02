@@ -5,11 +5,14 @@ const QIANWEN_API_KEY = process.env.QIANWEN_API_KEY || 'sk-c93c5888d56348d19e485
 const QIANWEN_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
 export async function POST(request: NextRequest) {
+  let message = '';
+  let type = 'chat';
+  
   try {
     console.log('🤖 通义千问 AI助手 API 被调用');
     
     const body = await request.json();
-    const { message, type = 'chat' } = body;
+    ({ message, type = 'chat' } = body);
     
     if (!message) {
       return NextResponse.json(
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       response: fallbackResponse + '\n\n⚠️ 注意：这是备用响应，通义千问API调用失败',
-      type,
+      type: type || 'chat',
       timestamp: new Date().toISOString(),
       fallback: true
     });
