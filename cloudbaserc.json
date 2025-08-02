@@ -8,7 +8,7 @@
       "serviceName": "suiyue-memoir",
       "servicePath": "/",
       "dockerfilePath": "./Dockerfile",
-      "containerPort": 80,
+      "containerPort": 8080,
       "buildCommand": "",
       "ignore": [
         ".git",

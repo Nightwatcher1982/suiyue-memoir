@@ -9,7 +9,7 @@ echo "📊 环境变量:"
 echo "  - NODE_ENV: $NODE_ENV"
 echo "  - PORT: $PORT"
 echo "  - HOSTNAME: $HOSTNAME"
-echo "  - CLOUDBASE_ENV_ID: $NEXT_PUBLIC_CLOUDBASE_ENV_ID"
+echo "  - NEXT_PUBLIC_CLOUDBASE_ENV_ID: $NEXT_PUBLIC_CLOUDBASE_ENV_ID"
 
 # 检查必要文件
 if [ ! -f "server.js" ]; then
