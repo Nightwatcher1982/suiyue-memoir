@@ -33,6 +33,11 @@ export async function POST(request: NextRequest) {
       duration: duration
     });
 
+    // 检查音频格式兼容性
+    if (audioFile.type === 'audio/webm') {
+      console.warn('⚠️ 音频格式为WebM，科大讯飞可能不支持，但继续尝试');
+    }
+
     // 使用统一的配置检查
     const configStatus = checkConfig();
     
@@ -154,46 +159,61 @@ async function performXunfeiIAT(audioData: Buffer): Promise<{ text: string; conf
       ws.on('open', () => {
         console.log('🌐 WebSocket连接已建立');
         
-        // 发送首帧（包含业务参数）
-        const firstFrame = {
-          common: {
-            app_id: XFYUN_APP_ID
-          },
-          business: {
-            language: 'zh_cn',
-            domain: 'iat',
-            accent: 'mandarin',
-            vinfo: 1,
-            vad_eos: 10000,
-            dwa: 'wpgs'
-          },
-          data: {
-            status: 0,
-            format: 'audio/L16;rate=16000',
-            encoding: 'raw',
-            audio: audioData.toString('base64')
-          }
-        };
-        
-        ws.send(JSON.stringify(firstFrame));
-        console.log('📤 首帧音频数据已发送');
-        
-        // 发送结束帧
-        setTimeout(() => {
-          const endFrame = {
+        try {
+          // 发送首帧（包含业务参数）
+          const firstFrameData = {
             common: {
               app_id: XFYUN_APP_ID
             },
+            business: {
+              language: 'zh_cn',
+              domain: 'iat',
+              accent: 'mandarin',
+              vinfo: 1,
+              vad_eos: 10000,
+              dwa: 'wpgs'
+            },
             data: {
-              status: 2,
+              status: 0,
               format: 'audio/L16;rate=16000',
               encoding: 'raw',
-              audio: ''
+              audio: audioData.toString('base64')
             }
           };
-          ws.send(JSON.stringify(endFrame));
-          console.log('🏁 结束帧已发送');
-        }, 100);
+          
+          const firstFrameJson = JSON.stringify(firstFrameData);
+          console.log('📤 准备发送首帧，数据大小:', firstFrameJson.length);
+          
+          ws.send(firstFrameJson);
+          console.log('📤 首帧音频数据已发送');
+          
+          // 发送结束帧
+          setTimeout(() => {
+            try {
+              const endFrameData = {
+                common: {
+                  app_id: XFYUN_APP_ID
+                },
+                data: {
+                  status: 2,
+                  format: 'audio/L16;rate=16000',
+                  encoding: 'raw',
+                  audio: ''
+                }
+              };
+              
+              ws.send(JSON.stringify(endFrameData));
+              console.log('🏁 结束帧已发送');
+            } catch (endError) {
+              console.error('❌ 发送结束帧失败:', endError);
+            }
+          }, 500); // 增加延迟到500ms
+          
+        } catch (sendError) {
+          console.error('❌ 发送数据帧失败:', sendError);
+          clearTimeout(timeout);
+          reject(new Error(`发送数据失败: ${sendError instanceof Error ? sendError.message : '未知错误'}`));
+        }
       });
       
       ws.on('message', (data) => {
@@ -242,7 +262,12 @@ async function performXunfeiIAT(audioData: Buffer): Promise<{ text: string; conf
       
       ws.on('error', (error) => {
         clearTimeout(timeout);
-        console.error('❌ WebSocket错误:', error);
+        console.error('❌ WebSocket错误详情:', {
+          message: error.message,
+          code: (error as any).code,
+          type: (error as any).type,
+          stack: error.stack
+        });
         reject(new Error(`WebSocket连接错误: ${error.message}`));
       });
       
