@@ -4,8 +4,8 @@ import crypto from 'crypto';
 // 科大讯飞WebSocket IAT配置
 const XFYUN_IAT_URL = 'wss://iat-api.xfyun.cn/v2/iat';
 const XFYUN_APP_ID = process.env.XFYUN_APP_ID || '6b59d550';
-const XFYUN_API_SECRET = process.env.XFYUN_API_SECRET;
-const XFYUN_API_KEY = process.env.XFYUN_API_KEY;
+const XFYUN_API_SECRET = process.env.XFYUN_API_SECRET || process.env.XUNFEI_API_SECRET;
+const XFYUN_API_KEY = process.env.XFYUN_API_KEY || process.env.XUNFEI_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,6 +32,14 @@ export async function POST(request: NextRequest) {
     });
 
     // 检查必需的API配置
+    console.log('🔑 环境变量检查:', {
+      XFYUN_APP_ID: XFYUN_APP_ID ? '已配置' : '未配置',
+      XFYUN_API_SECRET: XFYUN_API_SECRET ? '已配置' : '未配置', 
+      XFYUN_API_KEY: XFYUN_API_KEY ? '已配置' : '未配置',
+      XUNFEI_API_SECRET: process.env.XUNFEI_API_SECRET ? '已配置' : '未配置',
+      XUNFEI_API_KEY: process.env.XUNFEI_API_KEY ? '已配置' : '未配置'
+    });
+    
     if (!XFYUN_APP_ID || !XFYUN_API_SECRET || !XFYUN_API_KEY) {
       console.warn('⚠️ 科大讯飞API配置不完整，使用模拟响应');
       const mockResponse = getMockVoiceRecognitionResponse();
