@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Ocr20191230, * as $Ocr20191230 from '@alicloud/ocr20191230';
-import * as $OpenApi from '@alicloud/openapi-client';
-import * as $Util from '@alicloud/tea-util';
+import crypto from 'crypto';
 
-// 阿里云OCR配置 - 使用2019-12-30版本（与SDK匹配）
+// 阿里云OCR配置 - 使用2021-07-07版本
 const ALIBABA_ACCESS_KEY_ID = process.env.ALIBABA_ACCESS_KEY_ID;
 const ALIBABA_ACCESS_KEY_SECRET = process.env.ALIBABA_ACCESS_KEY_SECRET;
-const OCR_ENDPOINT = 'ocr.cn-hangzhou.aliyuncs.com';
+const OCR_ENDPOINT = 'ocr-api.cn-hangzhou.aliyuncs.com';
 const OCR_REGION = 'cn-hangzhou';
+const API_VERSION = '2021-07-07';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('📄 阿里云OCR API 被调用');
     
+    // 检查环境变量配置
+    if (!ALIBABA_ACCESS_KEY_ID || !ALIBABA_ACCESS_KEY_SECRET) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: '阿里云OCR服务未配置',
+          message: '请在环境变量中配置 ALIBABA_ACCESS_KEY_ID 和 ALIBABA_ACCESS_KEY_SECRET'
+        },
+        { status: 400 }
+      );
+    }
+
     // 检查请求内容类型
     const contentType = request.headers.get('content-type');
     if (!contentType?.includes('multipart/form-data')) {
@@ -35,34 +46,30 @@ export async function POST(request: NextRequest) {
 
     console.log('📷 接收到图片文件:', file.name, file.size);
 
+    // 验证文件大小（最大10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: '图片文件太大，请上传小于10MB的图片' },
+        { status: 400 }
+      );
+    }
+
+    // 验证文件类型
+    const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/bmp', 'image/gif', 'image/tiff', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: '不支持的图片格式，请上传PNG、JPG、JPEG、BMP、GIF、TIFF或WebP格式的图片' },
+        { status: 400 }
+      );
+    }
+
     // 转换文件为base64
     const buffer = await file.arrayBuffer();
     const base64Image = Buffer.from(buffer).toString('base64');
 
-    let ocrResult;
-    
-    // 检查环境变量配置
-    console.log('🔍 检查阿里云OCR配置:');
-    console.log('- ALIBABA_ACCESS_KEY_ID:', ALIBABA_ACCESS_KEY_ID ? `已配置 (${ALIBABA_ACCESS_KEY_ID.substring(0, 8)}...)` : '未配置');
-    console.log('- ALIBABA_ACCESS_KEY_SECRET:', ALIBABA_ACCESS_KEY_SECRET ? '已配置' : '未配置');
-    
-    // 如果配置了阿里云密钥，使用真实OCR服务
-    if (ALIBABA_ACCESS_KEY_ID && ALIBABA_ACCESS_KEY_SECRET) {
-      try {
-        console.log('🚀 使用阿里云OCR真实服务');
-        ocrResult = await performAlibabaOCR(base64Image);
-        console.log('✅ 阿里云OCR识别完成');
-      } catch (error) {
-        console.error('❌ 阿里云OCR调用失败，回退到模拟服务:', error);
-        ocrResult = getMockOCRResult();
-        ocrResult.message += ' (阿里云OCR调用失败，使用模拟结果)';
-      }
-    } else {
-      console.log('⚠️ 未配置阿里云密钥，使用模拟OCR结果');
-      ocrResult = getMockOCRResult();
-      (ocrResult as any).fallback = true;
-      (ocrResult as any).reason = '环境变量未配置';
-    }
+    console.log('🚀 调用阿里云OCR真实服务');
+    const ocrResult = await performAlibabaOCR(base64Image);
+    console.log('✅ 阿里云OCR识别完成');
 
     return NextResponse.json(ocrResult);
 
@@ -80,199 +87,151 @@ export async function POST(request: NextRequest) {
 }
 
 async function performAlibabaOCR(base64Image: string) {
-  // 直接使用SDK方式，因为HTTP签名比较复杂
-  console.log('🔧 使用阿里云OCR OpenAPI SDK方式');
-  return await performAlibabaOCRWithSDK(base64Image);
-}
+  const timestamp = new Date().toISOString();
+  const nonce = crypto.randomUUID();
+  
+  // 构建请求参数
+  const params: Record<string, string> = {
+    Action: 'RecognizeGeneral',
+    Version: API_VERSION,
+    RegionId: OCR_REGION,
+    AccessKeyId: ALIBABA_ACCESS_KEY_ID!,
+    SignatureMethod: 'HMAC-SHA1',
+    Timestamp: timestamp,
+    SignatureVersion: '1.0',
+    SignatureNonce: nonce,
+    Format: 'JSON',
+    Body: base64Image
+  };
 
-async function performAlibabaOCRWithSDK(base64Image: string) {
+  // 生成签名
+  const signature = generateSignature(params, ALIBABA_ACCESS_KEY_SECRET!);
+  params.Signature = signature;
+
+  console.log('📤 发送阿里云OCR请求');
+  console.log('- Endpoint:', `https://${OCR_ENDPOINT}`);
+  console.log('- Action:', params.Action);
+  console.log('- Version:', params.Version);
+  console.log('- 图片大小:', `${Math.round(base64Image.length / 1024)}KB`);
+
   try {
-    console.log('🔧 使用阿里云OCR OpenAPI 2019-12-30 SDK方式');
-    console.log('📊 详细配置信息:');
-    console.log('- AccessKeyId:', ALIBABA_ACCESS_KEY_ID ? `${ALIBABA_ACCESS_KEY_ID.substring(0, 8)}...` : 'undefined');
-    console.log('- AccessKeySecret:', ALIBABA_ACCESS_KEY_SECRET ? `${ALIBABA_ACCESS_KEY_SECRET.substring(0, 4)}...` : 'undefined');
-    console.log('- Endpoint:', OCR_ENDPOINT);
-    console.log('- Region:', OCR_REGION);
-    console.log('- 图片大小:', `${Math.round(base64Image.length / 1024)}KB`);
-    
-    // 创建配置对象 - 使用标准的阿里云OpenAPI配置
-    const config = new $OpenApi.Config({
-      accessKeyId: ALIBABA_ACCESS_KEY_ID,
-      accessKeySecret: ALIBABA_ACCESS_KEY_SECRET,
-      regionId: OCR_REGION,
+    const response = await fetch(`https://${OCR_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: new URLSearchParams(params).toString()
     });
-    // 设置正确的endpoint
-    config.endpoint = OCR_ENDPOINT;
-    
-    console.log('✅ 配置对象创建成功');
-    
-    // 创建OCR客户端 - 使用现有的SDK但配置为兼容模式
-    const client = new Ocr20191230(config);
-    console.log('✅ OCR客户端创建成功');
 
-    console.log('📤 调用阿里云OCR API - RecognizeCharacter');
+    console.log('📋 OCR响应状态:', response.status);
     
-    try {
-      // 使用RecognizeCharacter - 这是SDK支持的标准方法
-      const recognizeRequest = new $Ocr20191230.RecognizeCharacterRequest({
-        imageURL: `data:image/jpeg;base64,${base64Image}`,
-        minHeight: 16,
-        outputProbability: true
-      });
-
-      console.log('📤 发送RecognizeCharacter请求...');
-      
-      const response = await client.recognizeCharacter(recognizeRequest);
-      console.log('📋 RecognizeCharacter响应状态:', response.statusCode);
-      console.log('📋 RecognizeCharacter响应体:', JSON.stringify(response.body, null, 2));
-      
-      return await parseOCRResponse(response, 'RecognizeCharacter');
-      
-    } catch (sdkError) {
-      console.error('❌ OCR SDK调用详细错误信息:');
-      console.error('- 错误类型:', typeof sdkError);
-      console.error('- 错误对象:', sdkError);
-      console.error('- 错误消息:', sdkError instanceof Error ? sdkError.message : '未知错误');
-      console.error('- 错误堆栈:', sdkError instanceof Error ? sdkError.stack : '无堆栈信息');
-      
-      // 如果是网络错误，提供更多信息
-      if (sdkError && typeof sdkError === 'object') {
-        const errorObj = sdkError as any;
-        if (errorObj.code) console.error('- 错误代码:', errorObj.code);
-        if (errorObj.statusCode) console.error('- HTTP状态码:', errorObj.statusCode);
-        if (errorObj.data) console.error('- 错误数据:', JSON.stringify(errorObj.data, null, 2));
-        if (errorObj.requestId) console.error('- 请求ID:', errorObj.requestId);
-      }
-      
-      // 提供更具体的错误信息
-      if (sdkError instanceof Error) {
-        if (sdkError.message.includes('InvalidVersion')) {
-          throw new Error('OCR服务版本不匹配，请检查服务是否正确开通 (2019-12-30版本)');
-        }
-        if (sdkError.message.includes('InvalidAccessKeyId')) {
-          throw new Error('AccessKey ID无效，请检查配置');
-        }
-        if (sdkError.message.includes('SignatureDoesNotMatch')) {
-          throw new Error('AccessKey Secret无效，请检查配置');
-        }
-        if (sdkError.message.includes('Forbidden')) {
-          throw new Error('权限不足，请确认AccessKey有OCR服务权限');
-        }
-        if (sdkError.message.includes('ReadTimeout') || sdkError.message.includes('timeout')) {
-          throw new Error('网络超时，请检查网络连接或阿里云服务状态');
-        }
-      }
-      
-      throw sdkError;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OCR HTTP错误:', response.status, errorText);
+      throw new Error(`阿里云OCR HTTP错误: ${response.status}`);
     }
+
+    const responseData = await response.json();
+    console.log('📋 OCR响应数据:', JSON.stringify(responseData, null, 2));
+
+    return parseOCRResponse(responseData);
 
   } catch (error) {
-    console.error('❌ 阿里云OCR SDK调用详细错误:', error);
-    throw new Error(`阿里云OCR调用失败: ${error instanceof Error ? error.message : '未知错误'}`);
-  }
-}
-
-// 解析OCR响应的通用函数
-async function parseOCRResponse(response: any, method: string) {
-  console.log('🔍 开始解析OCR响应...');
-  console.log('- 方法:', method);
-  console.log('- 响应类型:', typeof response);
-  console.log('- 响应结构:', Object.keys(response || {}));
-  
-  if (response && response.body) {
-    console.log('✅ 响应体存在');
-    console.log('- 响应体类型:', typeof response.body);
-    console.log('- 响应体结构:', Object.keys(response.body || {}));
+    console.error('❌ 阿里云OCR调用失败:', error);
     
-    if (response.body.data) {
-      console.log('✅ data字段存在');
-      const data = response.body.data;
-      console.log('- data类型:', typeof data);
-      console.log('- data结构:', Object.keys(data || {}));
-      console.log('- data内容:', JSON.stringify(data, null, 2));
-      
-      let extractedText = '';
-      let totalConfidence = 0;
-      
-      // 处理不同API的响应格式
-      if (method === 'RecognizeGeneral' && data.content) {
-        console.log('✅ 使用RecognizeGeneral格式解析');
-        extractedText = data.content;
-        totalConfidence = data.confidence || 0.9;
-      } else if (data.results && Array.isArray(data.results)) {
-        console.log('✅ 使用results数组格式解析');
-        console.log('- results长度:', data.results.length);
-        const validResults = data.results.filter((item: any) => item.text);
-        console.log('- 有效results:', validResults.length);
-        extractedText = validResults.map((item: any) => item.text || '').join('\n');
-        
-        if (validResults.length > 0) {
-          totalConfidence = validResults.reduce((sum: number, item: any) => 
-            sum + (item.probability || 0.9), 0) / validResults.length;
-        }
-      } else if (data.content) {
-        console.log('✅ 使用通用content格式解析');
-        extractedText = data.content;
-        totalConfidence = data.confidence || 0.9;
-      } else {
-        console.log('❌ 未找到可识别的数据格式');
-        console.log('- data完整内容:', JSON.stringify(data, null, 2));
+    if (error instanceof Error) {
+      if (error.message.includes('InvalidAccessKeyId')) {
+        throw new Error('AccessKey ID无效，请检查配置');
       }
-
-      console.log('📝 解析结果:');
-      console.log('- 提取的文本长度:', extractedText.length);
-      console.log('- 提取的文本:', extractedText.substring(0, 100) + (extractedText.length > 100 ? '...' : ''));
-      console.log('- 置信度:', totalConfidence);
-
-      if (extractedText) {
-        console.log('✅ OCR解析成功');
-        return {
-          success: true,
-          text: extractedText,
-          confidence: totalConfidence || 0.9,
-          message: `阿里云OCR识别成功 (${method})`,
-          rawResponse: response.body
-        };
+      if (error.message.includes('SignatureDoesNotMatch')) {
+        throw new Error('AccessKey Secret无效，请检查配置');
       }
-    } else {
-      console.log('❌ 响应体中缺少data字段');
-      console.log('- 完整响应体:', JSON.stringify(response.body, null, 2));
+      if (error.message.includes('Forbidden')) {
+        throw new Error('权限不足，请确认AccessKey有OCR服务权限');
+      }
+      if (error.message.includes('timeout')) {
+        throw new Error('网络超时，请检查网络连接');
+      }
     }
-  } else {
-    console.log('❌ 响应或响应体为空');
-    console.log('- 完整响应:', JSON.stringify(response, null, 2));
+    
+    throw error;
   }
-  
-  console.log('❌ OCR响应解析失败');
-  throw new Error(`阿里云OCR ${method} 未返回可识别的文本内容`);
 }
 
-function getMockOCRResult() {
-  return {
-    success: true,
-    text: `📄 OCR文字识别结果（模拟）
+function generateSignature(params: Record<string, string>, accessKeySecret: string): string {
+  // 按字典序排序参数
+  const sortedParams = Object.keys(params)
+    .filter(key => key !== 'Signature')
+    .sort()
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join('&');
 
-这是一个模拟的OCR识别结果。
+  // 构建签名字符串
+  const stringToSign = `POST&${encodeURIComponent('/')}&${encodeURIComponent(sortedParams)}`;
+  
+  // 生成签名
+  const signature = crypto
+    .createHmac('sha1', `${accessKeySecret}&`)
+    .update(stringToSign)
+    .digest('base64');
 
-要启用真实的阿里云OCR服务，请：
+  console.log('🔐 签名生成完成');
+  return signature;
+}
 
-1. 登录阿里云控制台
-2. 开通OCR服务
-3. 获取AccessKey ID和AccessKey Secret
-4. 在CloudBase环境变量中配置：
-   ALIBABA_ACCESS_KEY_ID=your_access_key_id
-   ALIBABA_ACCESS_KEY_SECRET=your_access_key_secret
+function parseOCRResponse(responseData: any) {
+  console.log('🔍 解析OCR响应...');
+  
+  // 检查是否有错误
+  if (responseData.Code && responseData.Code !== 'Success') {
+    console.error('❌ OCR识别失败:', responseData.Code, responseData.Message);
+    throw new Error(`OCR识别失败: ${responseData.Message || responseData.Code}`);
+  }
 
-配置完成后，将自动使用真实的OCR识别功能。
+  // 解析识别结果
+  if (responseData.Data && responseData.Data.content) {
+    const extractedText = responseData.Data.content;
+    console.log('✅ OCR解析成功');
+    console.log('- 提取的文本长度:', extractedText.length);
+    console.log('- 提取的文本:', extractedText.substring(0, 200) + (extractedText.length > 200 ? '...' : ''));
 
-当前支持：
-✅ 通用文字识别
-✅ 中英文混合识别  
-✅ 手写文字识别
-✅ 表格文字识别`,
-    confidence: 0.95,
-    message: '模拟OCR识别（请配置阿里云密钥启用真实服务）'
-  };
+    return {
+      success: true,
+      text: extractedText,
+      confidence: 0.95, // 阿里云OCR通常有很高的准确率
+      message: '阿里云OCR识别成功',
+      requestId: responseData.RequestId
+    };
+  }
+
+  // 如果有详细的文字块信息
+  if (responseData.Data && responseData.Data.prism_wordsInfo) {
+    const wordsInfo = responseData.Data.prism_wordsInfo;
+    let extractedText = '';
+    
+    if (Array.isArray(wordsInfo)) {
+      extractedText = wordsInfo
+        .map((word: any) => word.word || word.text || '')
+        .filter(text => text.trim())
+        .join(' ');
+    }
+
+    if (extractedText) {
+      console.log('✅ OCR解析成功（通过prism_wordsInfo）');
+      return {
+        success: true,
+        text: extractedText,
+        confidence: 0.95,
+        message: '阿里云OCR识别成功',
+        requestId: responseData.RequestId
+      };
+    }
+  }
+
+  console.log('❌ 未找到可识别的文本内容');
+  console.log('- 完整响应:', JSON.stringify(responseData, null, 2));
+  throw new Error('OCR未识别到文本内容');
 }
 
 // 支持OPTIONS请求（用于CORS预检）
