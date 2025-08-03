@@ -74,55 +74,32 @@ export async function POST(request: NextRequest) {
 
     console.log('🚀 调用通义千问Paraformer语音识别服务');
     
-    try {
-      // 调用真实的通义千问Paraformer API
-      const recognitionResult = await performParaformerASR(audioData, audioFile.type);
-      console.log('✅ 通义千问语音识别完成');
-      
-      return NextResponse.json({
-        success: true,
-        text: recognitionResult.text,
-        confidence: recognitionResult.confidence,
-        timestamp: new Date().toISOString(),
-        source: 'dashscope-paraformer',
-        duration: recognitionResult.duration,
-        wordCount: recognitionResult.wordCount,
-        model: recognitionResult.model
-      });
-      
-    } catch (error) {
-      console.error('❌ 通义千问API调用失败:', error);
-      
-      // 如果真实API调用失败，返回增强的模拟响应作为降级
-      console.log('🔄 使用降级响应');
-      const enhancedResponse = generateEnhancedMockResponse(audioData.length);
-      
-      return NextResponse.json({
-        success: true,
-        text: enhancedResponse,
-        confidence: 0.88,
-        timestamp: new Date().toISOString(),
-        source: 'dashscope-fallback',
-        fallback: true,
-        reason: `API调用失败: ${error instanceof Error ? error.message : '未知错误'}`,
-        note: 'API密钥已配置，但Paraformer调用失败，使用降级响应'
-      });
-    }
+    // 直接调用真实的通义千问Paraformer API，不使用降级策略
+    const recognitionResult = await performParaformerASR(audioData, audioFile.type);
+    console.log('✅ 通义千问语音识别完成');
+    
+    return NextResponse.json({
+      success: true,
+      text: recognitionResult.text,
+      confidence: recognitionResult.confidence,
+      timestamp: new Date().toISOString(),
+      source: 'dashscope-paraformer',
+      duration: recognitionResult.duration,
+      wordCount: recognitionResult.wordCount,
+      model: recognitionResult.model
+    });
 
   } catch (error) {
     console.error('❌ 语音识别错误:', error);
     
-    // 如果真实API调用失败，返回模拟响应作为降级策略
-    const mockResponse = getMockVoiceRecognitionResponse();
+    // 返回真实的错误信息
     return NextResponse.json({
-      success: true,
-      text: mockResponse,
-      confidence: 0.95,
+      success: false,
+      error: '语音识别失败',
+      message: error instanceof Error ? error.message : '未知错误',
       timestamp: new Date().toISOString(),
-      source: 'mock-fallback',
-      fallback: true,
-      reason: `API调用失败: ${error instanceof Error ? error.message : '未知错误'}`
-    });
+      source: 'error'
+    }, { status: 500 });
   }
 }
 
@@ -161,24 +138,37 @@ async function performParaformerASR(audioData: Buffer, mimeType: string): Promis
 
 // 提交语音识别任务
 async function submitParaformerTask(audioData: Buffer, mimeType: string): Promise<{ task_id: string }> {
-  // 创建FormData上传音频文件
-  const formData = new FormData();
+  // 使用multipart/form-data格式上传
+  const boundary = '----formdata-' + Math.random().toString(36);
   
-  // 将Buffer转换为Blob
-  const audioBlob = new Blob([audioData], { type: mimeType });
-  formData.append('file', audioBlob, 'audio.webm');
+  let body = '';
+  body += `--${boundary}\r\n`;
+  body += `Content-Disposition: form-data; name="model"\r\n\r\n`;
+  body += `paraformer-v2\r\n`;
   
-  // 添加模型参数
-  formData.append('model', 'paraformer-v2');
-  formData.append('language_hints', 'zh');
+  body += `--${boundary}\r\n`;
+  body += `Content-Disposition: form-data; name="language_hints"\r\n\r\n`;
+  body += `zh\r\n`;
+  
+  body += `--${boundary}\r\n`;
+  body += `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n`;
+  body += `Content-Type: ${mimeType}\r\n\r\n`;
+  
+  // 将body转换为Buffer
+  const bodyPrefix = Buffer.from(body, 'utf8');
+  const bodySuffix = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+  
+  // 组合完整的请求体
+  const fullBody = Buffer.concat([bodyPrefix, audioData, bodySuffix]);
   
   const response = await fetch(DASHSCOPE_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
       'X-DashScope-Async': 'enable'
     },
-    body: formData
+    body: fullBody
   });
   
   console.log('📋 任务提交响应状态:', response.status);
