@@ -3,12 +3,11 @@ import Ocr20191230, * as $Ocr20191230 from '@alicloud/ocr20191230';
 import * as $OpenApi from '@alicloud/openapi-client';
 import * as $Util from '@alicloud/tea-util';
 
-// 阿里云OCR配置 - 使用2021-07-07版本
+// 阿里云OCR配置 - 使用2019-12-30版本（与SDK匹配）
 const ALIBABA_ACCESS_KEY_ID = process.env.ALIBABA_ACCESS_KEY_ID;
 const ALIBABA_ACCESS_KEY_SECRET = process.env.ALIBABA_ACCESS_KEY_SECRET;
-const OCR_ENDPOINT = 'ocr-api.cn-hangzhou.aliyuncs.com';
+const OCR_ENDPOINT = 'ocr.cn-hangzhou.aliyuncs.com';
 const OCR_REGION = 'cn-hangzhou';
-const API_VERSION = '2021-07-07';
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,13 +87,12 @@ async function performAlibabaOCR(base64Image: string) {
 
 async function performAlibabaOCRWithSDK(base64Image: string) {
   try {
-    console.log('🔧 使用阿里云OCR OpenAPI 2021-07-07 SDK方式');
+    console.log('🔧 使用阿里云OCR OpenAPI 2019-12-30 SDK方式');
     console.log('📊 详细配置信息:');
     console.log('- AccessKeyId:', ALIBABA_ACCESS_KEY_ID ? `${ALIBABA_ACCESS_KEY_ID.substring(0, 8)}...` : 'undefined');
     console.log('- AccessKeySecret:', ALIBABA_ACCESS_KEY_SECRET ? `${ALIBABA_ACCESS_KEY_SECRET.substring(0, 4)}...` : 'undefined');
     console.log('- Endpoint:', OCR_ENDPOINT);
     console.log('- Region:', OCR_REGION);
-    console.log('- API Version:', API_VERSION);
     console.log('- 图片大小:', `${Math.round(base64Image.length / 1024)}KB`);
     
     // 创建配置对象 - 使用标准的阿里云OpenAPI配置
@@ -112,46 +110,23 @@ async function performAlibabaOCRWithSDK(base64Image: string) {
     const client = new Ocr20191230(config);
     console.log('✅ OCR客户端创建成功');
 
-    console.log('📤 调用阿里云OCR API - RecognizeGeneral (通用文字识别)');
+    console.log('📤 调用阿里云OCR API - RecognizeCharacter');
     
     try {
-      // 使用通用文字识别API - 这是推荐的方式
-      // 检查是否有RecognizeGeneral方法
-      if (typeof (client as any).recognizeGeneral === 'function') {
-        console.log('✅ 发现RecognizeGeneral方法，使用通用文字识别');
-        const recognizeRequest = {
-          imageURL: `data:image/jpeg;base64,${base64Image}`,
-        };
-        
-        console.log('📤 发送RecognizeGeneral请求...');
-        const response = await (client as any).recognizeGeneral(recognizeRequest);
-        console.log('📋 RecognizeGeneral响应:', JSON.stringify(response, null, 2));
-        
-        return await parseOCRResponse(response, 'RecognizeGeneral');
-        
-      } else {
-        // 后备方案：使用RecognizeCharacter
-        console.log('⚠️ RecognizeGeneral方法不存在，使用RecognizeCharacter后备方案');
-        const recognizeRequest = new $Ocr20191230.RecognizeCharacterRequest({
-          imageURL: `data:image/jpeg;base64,${base64Image}`,
-          minHeight: 16,
-          outputProbability: true
-        });
+      // 使用RecognizeCharacter - 这是SDK支持的标准方法
+      const recognizeRequest = new $Ocr20191230.RecognizeCharacterRequest({
+        imageURL: `data:image/jpeg;base64,${base64Image}`,
+        minHeight: 16,
+        outputProbability: true
+      });
 
-        console.log('📤 发送RecognizeCharacter请求...');
-        console.log('📤 请求参数:', {
-          imageURL: `data:image/jpeg;base64,${base64Image.substring(0, 50)}...`,
-          minHeight: 16,
-          outputProbability: true
-        });
-        
-        const response = await client.recognizeCharacter(recognizeRequest);
-        console.log('📋 RecognizeCharacter响应状态:', response.statusCode);
-        console.log('📋 RecognizeCharacter响应头:', JSON.stringify(response.headers, null, 2));
-        console.log('📋 RecognizeCharacter响应体:', JSON.stringify(response.body, null, 2));
-        
-        return await parseOCRResponse(response, 'RecognizeCharacter');
-      }
+      console.log('📤 发送RecognizeCharacter请求...');
+      
+      const response = await client.recognizeCharacter(recognizeRequest);
+      console.log('📋 RecognizeCharacter响应状态:', response.statusCode);
+      console.log('📋 RecognizeCharacter响应体:', JSON.stringify(response.body, null, 2));
+      
+      return await parseOCRResponse(response, 'RecognizeCharacter');
       
     } catch (sdkError) {
       console.error('❌ OCR SDK调用详细错误信息:');
@@ -172,7 +147,7 @@ async function performAlibabaOCRWithSDK(base64Image: string) {
       // 提供更具体的错误信息
       if (sdkError instanceof Error) {
         if (sdkError.message.includes('InvalidVersion')) {
-          throw new Error('OCR服务版本不匹配，请检查服务是否正确开通 (2021-07-07版本)');
+          throw new Error('OCR服务版本不匹配，请检查服务是否正确开通 (2019-12-30版本)');
         }
         if (sdkError.message.includes('InvalidAccessKeyId')) {
           throw new Error('AccessKey ID无效，请检查配置');

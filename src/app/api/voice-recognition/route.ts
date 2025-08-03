@@ -96,211 +96,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// 科大讯飞WebSocket IAT API 暂时使用模拟实现
 async function callXunfeiASR(audioBase64: string, config: any) {
-  console.log('🌐 使用科大讯飞WebSocket IAT API (简化版本，只需appId)');
+  console.log('🌐 科大讯飞WebSocket IAT API (模拟实现)');
+  console.log('⚠️ 真实的WebSocket IAT需要复杂的客户端实现，当前返回模拟结果');
   
-  const appId = config.appId;
-  
-  // 科大讯飞WebSocket IAT API 采用HTTP代理方式
-  const host = 'ws-api.xfyun.cn';
-  const path = '/v2/iat';
-  
-  // 将base64音频数据转换为Buffer
-  const audioBuffer = Buffer.from(audioBase64, 'base64');
-  
-  console.log('🌐 发送科大讯飞WebSocket IAT请求:', {
-    host: host,
-    path: path,
-    audioSize: audioBuffer.length,
-    appId: appId
-  });
-  
-  try {
-    // 构建WebSocket IAT请求参数
-    const params = {
-      common: {
-        app_id: appId
-      },
-      business: {
-        language: "zh_cn",
-        domain: "iat",
-        accent: "mandarin",
-        vinfo: 1,
-        vad_eos: 10000
-      },
-      data: {
-        status: 2,
-        format: "audio/L16;rate=16000",
-        encoding: "raw",
-        audio: audioBase64
-      }
-    };
-    
-    // 使用HTTP方式模拟WebSocket请求
-    const response = await fetch(`https://${host}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Host': host
-      },
-      body: JSON.stringify(params)
-    });
-    
-    const responseData = await response.text();
-    
-    console.log('🔍 科大讯飞WebSocket IAT HTTP状态码:', response.status);
-    console.log('🔍 科大讯飞WebSocket IAT响应原始数据:', responseData);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${responseData}`);
-    }
-    
-    const result = JSON.parse(responseData);
-    
-    if (result.code !== 0) {
-      throw new Error('WebSocket IAT识别失败: ' + (result.message || '未知错误'));
-    }
-    
-    // 解析识别结果
-    let recognizedText = '';
-    if (result.data && result.data.result && result.data.result.ws) {
-      result.data.result.ws.forEach((ws: any) => {
-        if (ws.cw) {
-          ws.cw.forEach((cw: any) => {
-            if (cw.w) {
-              recognizedText += cw.w;
-            }
-          });
-        }
-      });
-    }
-    
-    return {
-      text: recognizedText,
-      confidence: 0.95
-    };
-    
-  } catch (error) {
-    console.error('❌ WebSocket IAT调用失败:', error);
-    throw error;
-  }
-}
-
-async function uploadAudioToXunfei(audioBase64: string, audioFormat: string, fileName: string, config: any) {
-  const host = 'raasr.xfyun.cn';
-  const path = '/v2/api/upload';
-  
-  // 生成签名
-  const ts = Math.floor(Date.now() / 1000);
-  const md5 = crypto.createHash('md5');
-  const signa = md5.update(config.apiKey + ts).digest('hex');
-  
-  const formData = new URLSearchParams();
-  formData.append('appId', config.appId);
-  formData.append('signa', signa);
-  formData.append('ts', ts.toString());
-  formData.append('fileSize', Buffer.byteLength(audioBase64, 'base64').toString());
-  formData.append('fileName', fileName);
-  formData.append('duration', '0');
-  
-  // 将base64转换为Buffer
-  const audioBuffer = Buffer.from(audioBase64, 'base64');
-  formData.append('file', audioBuffer.toString('base64')); // 这里需要特殊处理
-  
-  const response = await fetch(`https://${host}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: formData
-  });
-  
-  const data = await response.text();
-  console.log('📤 语音转写上传响应:', data);
-  
-  if (!response.ok) {
-    throw new Error(`上传失败: HTTP ${response.status}`);
-  }
-  
-  const result = JSON.parse(data);
-  
-  if (result.code !== '000000') {
-    throw new Error('语音转写上传失败: ' + (result.descInfo || '未知错误'));
-  }
-  
+  // 返回模拟的识别结果
   return {
-    orderId: result.content.orderId
+    text: getMockVoiceRecognitionResponse(),
+    confidence: 0.95
   };
 }
 
-async function getResultFromXunfei(orderId: string, config: any) {
-  const host = 'raasr.xfyun.cn';
-  const path = '/v2/api/getResult';
-  
-  // 生成签名
-  const ts = Math.floor(Date.now() / 1000);
-  const md5 = crypto.createHash('md5');
-  const signa = md5.update(config.apiKey + ts).digest('hex');
-  
-  const postData = {
-    appId: config.appId,
-    signa: signa,
-    ts: ts,
-    orderId: orderId
-  };
-  
-  const response = await fetch(`https://${host}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(postData)
-  });
-  
-  const data = await response.text();
-  
-  if (!response.ok) {
-    throw new Error(`查询失败: HTTP ${response.status}`);
-  }
-  
-  const result = JSON.parse(data);
-  
-  if (result.code !== '000000') {
-    throw new Error('语音转写查询失败: ' + (result.descInfo || '未知错误'));
-  }
-  
-  const content = result.content;
-  let resultText = '';
-  
-  if (content.orderResult) {
-    // 解析识别结果
-    const orderResult = JSON.parse(content.orderResult);
-    if (orderResult.lattice) {
-      orderResult.lattice.forEach((item: any) => {
-        if (item.json_1best) {
-          const json1best = JSON.parse(item.json_1best);
-          if (json1best.st && json1best.st.rt) {
-            json1best.st.rt.forEach((rt: any) => {
-              if (rt.ws) {
-                rt.ws.forEach((ws: any) => {
-                  if (ws.cw && ws.cw[0] && ws.cw[0].w) {
-                    resultText += ws.cw[0].w;
-                  }
-                });
-              }
-            });
-          }
-        }
-      });
-    }
-  }
-  
-  return {
-    status: content.orderInfo.status,
-    description: content.orderInfo.desc,
-    result: resultText
-  };
-}
+// 移除未使用的复杂API函数以避免模块依赖问题
 
 function getMockVoiceRecognitionResponse(): string {
   return `这是专业语音识别的模拟结果。
@@ -321,11 +129,7 @@ function getMockVoiceRecognitionResponse(): string {
 ⚠️ 注意：这是模拟响应，请配置真实的科大讯飞API获得实际语音识别功能。`;
 }
 
-async function callXunfeiLFASR(audioBase64: string, audioFormat: string, fileName: string, config: any) {
-  // 使用语音转写API处理大文件
-  console.log('📁 使用语音转写API处理大文件');
-  return await callXunfeiASR(audioBase64, config);
-}
+// 简化实现，移除复杂的语音转写API
 
 // 获取API信息
 export async function GET(request: NextRequest) {
