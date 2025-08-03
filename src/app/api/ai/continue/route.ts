@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
       const fallbackResponse = generateMockContinueResponse(context);
       return NextResponse.json({
         success: true,
-        continuedText: fallbackResponse,
+        data: {
+          polishedText: fallbackResponse,
+          suggestions: ['⚠️ 使用模拟响应（未配置API密钥）', '已根据上下文生成续写内容']
+        },
         timestamp: new Date().toISOString(),
         fallback: true,
         reason: 'API密钥未配置'
@@ -44,7 +47,10 @@ export async function POST(request: NextRequest) {
     console.log('✅ 续写响应生成完成');
     return NextResponse.json({
       success: true,
-      continuedText: aiResponse,
+      data: {
+        polishedText: aiResponse,
+        suggestions: [`AI续写完成 - 基于上下文生成 ${aiResponse.length} 字内容`]
+      },
       timestamp: new Date().toISOString()
     });
 
@@ -57,7 +63,10 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      continuedText: fallbackResponse,
+      data: {
+        polishedText: fallbackResponse,
+        suggestions: ['⚠️ AI续写失败，使用模拟响应', '请检查网络连接和API配置']
+      },
       timestamp: new Date().toISOString(),
       fallback: true
     });

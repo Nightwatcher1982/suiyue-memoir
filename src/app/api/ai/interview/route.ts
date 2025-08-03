@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
       const fallbackResponse = generateMockInterviewQuestions(topic);
       return NextResponse.json({
         success: true,
-        questions: fallbackResponse,
+        data: {
+          suggestions: fallbackResponse
+        },
         timestamp: new Date().toISOString(),
         fallback: true,
         reason: 'API密钥未配置'
@@ -49,7 +51,9 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      questions,
+      data: {
+        suggestions: questions
+      },
       topic,
       timestamp: new Date().toISOString()
     });
@@ -63,7 +67,9 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      questions: fallbackQuestions,
+      data: {
+        suggestions: fallbackQuestions
+      },
       topic,
       timestamp: new Date().toISOString(),
       fallback: true

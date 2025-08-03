@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
       const fallbackResponse = generateMockExpandResponse(text, direction);
       return NextResponse.json({
         success: true,
-        expandedText: fallbackResponse,
+        data: {
+          polishedText: fallbackResponse,
+          suggestions: ['⚠️ 使用模拟响应（未配置API密钥）', `已按照"${direction}"方向扩写内容`]
+        },
         direction,
         timestamp: new Date().toISOString(),
         fallback: true,
@@ -45,7 +48,10 @@ export async function POST(request: NextRequest) {
     console.log('✅ 内容扩写响应生成完成');
     return NextResponse.json({
       success: true,
-      expandedText: aiResponse,
+      data: {
+        polishedText: aiResponse,
+        suggestions: [`AI扩写完成 - 按照"${direction}"方向扩写 ${aiResponse.length} 字内容`]
+      },
       direction,
       timestamp: new Date().toISOString()
     });
@@ -59,7 +65,10 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      expandedText: fallbackResponse,
+      data: {
+        polishedText: fallbackResponse,
+        suggestions: ['⚠️ AI扩写失败，使用模拟响应', '请检查网络连接和API配置']
+      },
       direction,
       timestamp: new Date().toISOString(),
       fallback: true
