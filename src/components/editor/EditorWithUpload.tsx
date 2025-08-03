@@ -6,7 +6,7 @@ import { PhotoUploadEnhanced } from './PhotoUploadEnhanced';
 import { PhotoPickerModal } from '@/components/photos/PhotoPickerModal';
 import { OCRUpload } from './OCRUpload';
 import { AIWritingAssistant } from '@/components/ai/AIWritingAssistant';
-import { VoiceRecorder } from '@/components/ai/VoiceRecorder';
+import { VoiceInputContainer } from '@/components/ai/VoiceInputContainer';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import type { Photo } from '@/types';
@@ -71,7 +71,7 @@ export function EditorWithUpload({
 
   const handleVoiceTranscription = (text: string) => {
     // 将语音转换的文字添加到编辑器
-    setShowVoiceRecorder(false);
+    // 注意：不再自动关闭面板，让用户可以连续使用
     
     console.log('🎤 开始插入语音文字到编辑器:', text.length, '个字符');
     
@@ -137,7 +137,7 @@ export function EditorWithUpload({
             variant="outline"
             onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
           >
-            🎤 {showVoiceRecorder ? '关闭语音录制' : '语音输入'}
+            🎤 {showVoiceRecorder ? '关闭语音输入' : '语音转文字'}
           </Button>
           <Button
             size="sm"
@@ -177,7 +177,7 @@ export function EditorWithUpload({
       {/* 语音录制组件 */}
       {showVoiceRecorder && (
         <div className="border border-gray-200 rounded-lg p-4 bg-white">
-          <VoiceRecorder onTranscription={handleVoiceTranscription} />
+          <VoiceInputContainer onTranscriptionComplete={handleVoiceTranscription} />
         </div>
       )}
 

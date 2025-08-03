@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 通义千问API配置
-const QIANWEN_API_KEY = process.env.QIANWEN_API_KEY || 'sk-c93c5888d56348d19e4857492a456214';
+// 通义千问API配置 - 支持多种环境变量名称
+const QIANWEN_API_KEY = process.env.TONGYI_ACCESS_KEY_ID || 
+                       process.env.QIANWEN_API_KEY || 
+                       process.env.DASHSCOPE_API_KEY ||
+                       'sk-c93c5888d56348d19e4857492a456214';
 const QIANWEN_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
 export async function POST(request: NextRequest) {
@@ -10,6 +13,11 @@ export async function POST(request: NextRequest) {
   
   try {
     console.log('🤖 通义千问 AI助手 API 被调用');
+    console.log('🔍 检查通义千问API配置:');
+    console.log('- TONGYI_ACCESS_KEY_ID:', process.env.TONGYI_ACCESS_KEY_ID ? '已配置' : '未配置');
+    console.log('- QIANWEN_API_KEY:', process.env.QIANWEN_API_KEY ? '已配置' : '未配置');
+    console.log('- DASHSCOPE_API_KEY:', process.env.DASHSCOPE_API_KEY ? '已配置' : '未配置');
+    console.log('- 最终使用的API KEY:', QIANWEN_API_KEY ? `已配置 (${QIANWEN_API_KEY.substring(0, 8)}...)` : '未配置');
     
     const body = await request.json();
     ({ message, type = 'chat' } = body);

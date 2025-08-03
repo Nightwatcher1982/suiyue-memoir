@@ -96,10 +96,11 @@ export const getStorage = () => {
 };
 
 export const getFunctions = () => {
-  if (!functions_instance) {
-    const instance = getCloudbase();
-    if (!instance) throw new Error('CloudBase未初始化');
-    functions_instance = instance.functions();
-  }
-  return functions_instance;
+  const instance = getCloudbase();
+  if (!instance) throw new Error('CloudBase未初始化');
+  
+  // CloudBase JS SDK直接使用app实例的callFunction方法
+  return {
+    callFunction: instance.callFunction.bind(instance)
+  };
 }; 

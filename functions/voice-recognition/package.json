@@ -1,0 +1,10 @@
+{
+  "name": "voice-recognition",
+  "version": "1.0.0",
+  "description": "科大讯飞语音识别云函数",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.4.1",
+    "form-data": "^4.0.0"
+  }
+}

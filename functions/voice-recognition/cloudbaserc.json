@@ -1,0 +1,11 @@
+{
+  "envId": "suiyue-memoir-dev-3e9aoud20837ef",
+  "version": "2.0",
+  "functions": {
+    "voice-recognition": {
+      "timeout": 60,
+      "runtime": "Nodejs16.13",
+      "installDependency": true
+    }
+  }
+}

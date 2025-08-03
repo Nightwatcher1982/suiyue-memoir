@@ -1,0 +1,71 @@
+{
+  "description": "科大讯飞语音识别配置示例",
+  "note": "请将此文件重命名为config.json并填入真实的API凭证，或使用其他配置方式",
+  
+  "environmentVariables": {
+    "description": "环境变量配置方式（推荐）",
+    "variables": {
+      "XUNFEI_APP_ID": "your_app_id_here",
+      "XUNFEI_API_SECRET": "your_api_secret_here", 
+      "XUNFEI_API_KEY": "your_api_key_here"
+    }
+  },
+  
+  "databaseConfig": {
+    "description": "数据库配置方式",
+    "collection": "app_config",
+    "document": {
+      "_id": "voice_recognition_config",
+      "type": "voice_recognition",
+      "provider": "xunfei",
+      "appId": "your_app_id_here",
+      "apiSecret": "your_api_secret_here",
+      "apiKey": "your_api_key_here",
+      "createdAt": "2025-08-03T00:00:00.000Z",
+      "updatedAt": "2025-08-03T00:00:00.000Z",
+      "enabled": true
+    }
+  },
+  
+  "fileStorageConfig": {
+    "description": "文件存储配置方式",
+    "fileName": "voice-recognition-config.json",
+    "content": {
+      "xunfei": {
+        "appId": "your_app_id_here",
+        "apiSecret": "your_api_secret_here",
+        "apiKey": "your_api_key_here"
+      },
+      "version": "1.0.0",
+      "lastUpdated": "2025-08-03T00:00:00.000Z"
+    }
+  },
+  
+  "apiSettings": {
+    "description": "科大讯飞API设置说明",
+    "endpoint": "https://iat-api.xfyun.cn/v2/iat",
+    "language": "zh_cn",
+    "domain": "iat",
+    "accent": "mandarin",
+    "audioFormat": "audio/L16;rate=16000",
+    "encoding": "raw",
+    "features": {
+      "vinfo": "返回置信度",
+      "vad_eos": "静音检测时长(ms)",
+      "dwa": "动态修正"
+    }
+  },
+  
+  "deployment": {
+    "description": "部署配置",
+    "functionName": "voice-recognition",
+    "runtime": "nodejs16",
+    "memory": 512,
+    "timeout": 30,
+    "permissions": [
+      "database.read",
+      "storage.read", 
+      "network.external"
+    ]
+  }
+}

@@ -22,6 +22,7 @@
       "envVariables": {
         "NEXT_PUBLIC_CLOUDBASE_ENV_ID": "suiyue-memoir-dev-3e9aoud20837ef",
         "NODE_ENV": "production",
+        "TONGYI_ACCESS_KEY_ID": "sk-c93c5888d56348d19e4857492a456214",
         "QIANWEN_API_KEY": "sk-c93c5888d56348d19e4857492a456214"
       },
       "healthCheck": {

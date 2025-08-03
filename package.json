@@ -17,7 +17,9 @@
     "deploy:framework": "tcb framework deploy --verbose"
   },
   "dependencies": {
+    "@alicloud/ocr20191230": "^4.0.0",
     "@alicloud/openapi-client": "^0.4.15",
+    "@alicloud/tea-util": "^1.4.10",
     "@cloudbase/js-sdk": "^2.15.1",
     "@cloudbase/node-sdk": "^3.10.1",
     "@headlessui/react": "^2.2.0",
