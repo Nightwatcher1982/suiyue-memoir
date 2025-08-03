@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { API_CONFIG, checkConfig } from '@/lib/config';
 
 // 阿里云OCR配置 - 使用2021-07-07版本
-const ALIBABA_ACCESS_KEY_ID = process.env.ALIBABA_ACCESS_KEY_ID;
-const ALIBABA_ACCESS_KEY_SECRET = process.env.ALIBABA_ACCESS_KEY_SECRET;
+const ALIBABA_ACCESS_KEY_ID = API_CONFIG.ALIBABA.ACCESS_KEY_ID;
+const ALIBABA_ACCESS_KEY_SECRET = API_CONFIG.ALIBABA.ACCESS_KEY_SECRET;
 const OCR_ENDPOINT = 'ocr-api.cn-hangzhou.aliyuncs.com';
 const OCR_REGION = 'cn-hangzhou';
 const API_VERSION = '2021-07-07';

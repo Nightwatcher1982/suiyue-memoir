@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { API_CONFIG, checkConfig } from '@/lib/config';
 
 export async function GET(request: NextRequest) {
   // 获取所有可能的科大讯飞相关环境变量
@@ -55,6 +56,9 @@ export async function GET(request: NextRequest) {
     (process.env.XFYUN_API_KEY || process.env.XUNFEI_API_KEY)
   );
 
+  // 获取统一配置状态
+  const configStatus = checkConfig();
+
   return NextResponse.json({
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
@@ -63,24 +67,27 @@ export async function GET(request: NextRequest) {
     // 环境变量状态
     environmentVariables: safeEnvVars,
     
-    // 配置完整性检查
-    configStatus: {
-      xunfei: {
-        complete: xfyunComplete,
-        appId: !!(process.env.XFYUN_APP_ID || process.env.XUNFEI_APP_ID || '6b59d550'),
-        apiSecret: !!(process.env.XFYUN_API_SECRET || process.env.XUNFEI_API_SECRET),
-        apiKey: !!(process.env.XFYUN_API_KEY || process.env.XUNFEI_API_KEY)
+    // 当前有效配置（使用配置文件）
+    currentConfig: {
+      xfyun: {
+        appId: API_CONFIG.XFYUN.APP_ID ? `${API_CONFIG.XFYUN.APP_ID}` : '未配置',
+        apiSecret: API_CONFIG.XFYUN.API_SECRET ? `${API_CONFIG.XFYUN.API_SECRET.substring(0,4)}****` : '未配置',
+        apiKey: API_CONFIG.XFYUN.API_KEY ? `${API_CONFIG.XFYUN.API_KEY.substring(0,4)}****` : '未配置'
       },
       alibaba: {
-        complete: !!(process.env.ALIBABA_ACCESS_KEY_ID && process.env.ALIBABA_ACCESS_KEY_SECRET),
-        keyId: !!process.env.ALIBABA_ACCESS_KEY_ID,
-        keySecret: !!process.env.ALIBABA_ACCESS_KEY_SECRET
+        keyId: API_CONFIG.ALIBABA.ACCESS_KEY_ID ? `${API_CONFIG.ALIBABA.ACCESS_KEY_ID.substring(0,4)}****` : '未配置',
+        keySecret: API_CONFIG.ALIBABA.ACCESS_KEY_SECRET ? `${API_CONFIG.ALIBABA.ACCESS_KEY_SECRET.substring(0,4)}****` : '未配置'
       },
       dashscope: {
-        complete: !!process.env.DASHSCOPE_API_KEY,
-        apiKey: !!process.env.DASHSCOPE_API_KEY
+        apiKey: API_CONFIG.DASHSCOPE.API_KEY ? `${API_CONFIG.DASHSCOPE.API_KEY.substring(0,4)}****` : '未配置'
       }
     },
+    
+    // 配置完整性检查
+    configStatus,
+    
+    // 配置来源说明
+    configSource: "使用src/lib/config.ts配置文件（环境变量优先，缺失时使用默认值）",
     
     // 所有环境变量键名（用于调试）
     allEnvKeys: Object.keys(process.env).filter(key => 

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { API_CONFIG, checkConfig } from '@/lib/config';
 
 // 科大讯飞WebSocket IAT配置
 const XFYUN_IAT_URL = 'wss://iat-api.xfyun.cn/v2/iat';
-const XFYUN_APP_ID = process.env.XFYUN_APP_ID || '6b59d550';
-const XFYUN_API_SECRET = process.env.XFYUN_API_SECRET || process.env.XUNFEI_API_SECRET;
-const XFYUN_API_KEY = process.env.XFYUN_API_KEY || process.env.XUNFEI_API_KEY;
+const XFYUN_APP_ID = API_CONFIG.XFYUN.APP_ID;
+const XFYUN_API_SECRET = API_CONFIG.XFYUN.API_SECRET;
+const XFYUN_API_KEY = API_CONFIG.XFYUN.API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,30 +32,18 @@ export async function POST(request: NextRequest) {
       duration: duration
     });
 
-    // 详细的环境变量检查和调试
-    console.log('🔍 原始环境变量检查:', {
-      'process.env.XFYUN_APP_ID': process.env.XFYUN_APP_ID || 'undefined',
-      'process.env.XFYUN_API_SECRET': process.env.XFYUN_API_SECRET ? `${process.env.XFYUN_API_SECRET.substring(0,4)}****` : 'undefined',
-      'process.env.XFYUN_API_KEY': process.env.XFYUN_API_KEY ? `${process.env.XFYUN_API_KEY.substring(0,4)}****` : 'undefined',
-      'process.env.XUNFEI_API_SECRET': process.env.XUNFEI_API_SECRET ? `${process.env.XUNFEI_API_SECRET.substring(0,4)}****` : 'undefined',
-      'process.env.XUNFEI_API_KEY': process.env.XUNFEI_API_KEY ? `${process.env.XUNFEI_API_KEY.substring(0,4)}****` : 'undefined'
-    });
+    // 使用统一的配置检查
+    const configStatus = checkConfig();
     
-    console.log('🔑 最终配置值:', {
+    console.log('🔑 API配置状态:', {
       XFYUN_APP_ID: XFYUN_APP_ID ? `已配置: ${XFYUN_APP_ID}` : '未配置',
       XFYUN_API_SECRET: XFYUN_API_SECRET ? `已配置: ${XFYUN_API_SECRET.substring(0,4)}****` : '未配置', 
       XFYUN_API_KEY: XFYUN_API_KEY ? `已配置: ${XFYUN_API_KEY.substring(0,4)}****` : '未配置'
     });
     
-    // 更宽松的配置检查：只要有secret和key就行，app_id有默认值
-    const hasValidConfig = XFYUN_API_SECRET && XFYUN_API_KEY;
-    
-    if (!hasValidConfig) {
+    if (!configStatus.xfyun.complete) {
       console.warn('⚠️ 科大讯飞API配置不完整，使用模拟响应');
-      console.warn('缺少的配置:', {
-        needSecret: !XFYUN_API_SECRET,
-        needKey: !XFYUN_API_KEY
-      });
+      console.warn('配置状态:', configStatus.xfyun);
       const mockResponse = getMockVoiceRecognitionResponse();
       return NextResponse.json({
         success: true,

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { API_CONFIG, checkConfig } from '@/lib/config';
 
 // 通义千问API配置
-const QIANWEN_API_KEY = process.env.DASHSCOPE_API_KEY || 
-                       process.env.TONGYI_ACCESS_KEY_ID || 
-                       process.env.QIANWEN_API_KEY;
+const QIANWEN_API_KEY = API_CONFIG.DASHSCOPE.API_KEY;
 const QIANWEN_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
 export async function POST(request: NextRequest) {
