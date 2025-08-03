@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // 通义千问API配置
-const QIANWEN_API_KEY = process.env.TONGYI_ACCESS_KEY_ID || 
-                       process.env.QIANWEN_API_KEY || 
-                       process.env.DASHSCOPE_API_KEY ||
-                       'sk-c93c5888d56348d19e4857492a456214';
+const QIANWEN_API_KEY = process.env.DASHSCOPE_API_KEY || 
+                       process.env.TONGYI_ACCESS_KEY_ID || 
+                       process.env.QIANWEN_API_KEY;
 const QIANWEN_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
 export async function POST(request: NextRequest) {
@@ -22,6 +21,19 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('💬 润色请求:', { options, text: text.substring(0, 100) });
+
+    // 检查API密钥配置
+    if (!QIANWEN_API_KEY) {
+      console.warn('⚠️ 通义千问API密钥未配置，使用模拟响应');
+      const fallbackResponse = generateMockPolishResponse(text);
+      return NextResponse.json({
+        success: true,
+        data: fallbackResponse,
+        timestamp: new Date().toISOString(),
+        fallback: true,
+        reason: 'API密钥未配置'
+      });
+    }
 
     // 根据选项生成系统提示词
     const systemPrompt = getPolishSystemPrompt(options);

@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('⚠️ 未配置阿里云密钥，使用模拟OCR结果');
       ocrResult = getMockOCRResult();
+      (ocrResult as any).fallback = true;
+      (ocrResult as any).reason = '环境变量未配置';
     }
 
     return NextResponse.json(ocrResult);
