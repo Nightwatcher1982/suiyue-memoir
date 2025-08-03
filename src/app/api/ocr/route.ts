@@ -90,7 +90,7 @@ async function performAlibabaOCR(base64Image: string) {
   const timestamp = new Date().toISOString();
   const nonce = crypto.randomUUID();
   
-  // 构建请求参数
+  // 构建请求参数（不包含Body，Body需要单独处理）
   const params: Record<string, string> = {
     Action: 'RecognizeGeneral',
     Version: API_VERSION,
@@ -100,8 +100,7 @@ async function performAlibabaOCR(base64Image: string) {
     Timestamp: timestamp,
     SignatureVersion: '1.0',
     SignatureNonce: nonce,
-    Format: 'JSON',
-    Body: base64Image
+    Format: 'JSON'
   };
 
   // 生成签名
@@ -115,13 +114,19 @@ async function performAlibabaOCR(base64Image: string) {
   console.log('- 图片大小:', `${Math.round(base64Image.length / 1024)}KB`);
 
   try {
-    const response = await fetch(`https://${OCR_ENDPOINT}`, {
+    // 将参数拼接到URL查询字符串中
+    const queryString = new URLSearchParams(params).toString();
+    
+    // 图片数据直接作为请求body发送
+    const imageBuffer = Buffer.from(base64Image, 'base64');
+
+    const response = await fetch(`https://${OCR_ENDPOINT}?${queryString}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/octet-stream',
         'Accept': 'application/json'
       },
-      body: new URLSearchParams(params).toString()
+      body: imageBuffer
     });
 
     console.log('📋 OCR响应状态:', response.status);
@@ -189,20 +194,34 @@ function parseOCRResponse(responseData: any) {
     throw new Error(`OCR识别失败: ${responseData.Message || responseData.Code}`);
   }
 
-  // 解析识别结果
-  if (responseData.Data && responseData.Data.content) {
-    const extractedText = responseData.Data.content;
-    console.log('✅ OCR解析成功');
-    console.log('- 提取的文本长度:', extractedText.length);
-    console.log('- 提取的文本:', extractedText.substring(0, 200) + (extractedText.length > 200 ? '...' : ''));
+  // 解析识别结果 - Data字段是JSON字符串，需要解析
+  if (responseData.Data) {
+    let dataObj;
+    try {
+      dataObj = typeof responseData.Data === 'string' ? JSON.parse(responseData.Data) : responseData.Data;
+    } catch (error) {
+      console.error('❌ 解析Data字段失败:', error);
+      throw new Error('解析OCR响应数据失败');
+    }
 
-    return {
-      success: true,
-      text: extractedText,
-      confidence: 0.95, // 阿里云OCR通常有很高的准确率
-      message: '阿里云OCR识别成功',
-      requestId: responseData.RequestId
-    };
+    if (dataObj.content) {
+      const extractedText = dataObj.content.trim();
+      console.log('✅ OCR解析成功');
+      console.log('- 提取的文本长度:', extractedText.length);
+      console.log('- 提取的文本:', extractedText.substring(0, 200) + (extractedText.length > 200 ? '...' : ''));
+
+      return {
+        success: true,
+        text: extractedText,
+        confidence: 0.95, // 阿里云OCR通常有很高的准确率
+        message: '阿里云OCR识别成功',
+        requestId: responseData.RequestId,
+        details: {
+          wordCount: dataObj.prism_wnum || 0,
+          wordsInfo: dataObj.prism_wordsInfo || []
+        }
+      };
+    }
   }
 
   // 如果有详细的文字块信息

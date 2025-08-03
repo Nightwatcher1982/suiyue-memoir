@@ -31,6 +31,7 @@
     "@tiptap/extension-typography": "^2.12.2",
     "@tiptap/react": "^2.12.2",
     "@tiptap/starter-kit": "^2.12.2",
+    "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.21",
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
@@ -41,7 +42,8 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-dropzone": "^14.3.5",
-    "reactflow": "^11.11.4"
+    "reactflow": "^11.11.4",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@cloudbase/cli": "^1.9.31",
