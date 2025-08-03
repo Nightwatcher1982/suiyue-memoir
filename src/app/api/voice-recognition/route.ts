@@ -31,17 +31,30 @@ export async function POST(request: NextRequest) {
       duration: duration
     });
 
-    // 检查必需的API配置
-    console.log('🔑 环境变量检查:', {
-      XFYUN_APP_ID: XFYUN_APP_ID ? '已配置' : '未配置',
-      XFYUN_API_SECRET: XFYUN_API_SECRET ? '已配置' : '未配置', 
-      XFYUN_API_KEY: XFYUN_API_KEY ? '已配置' : '未配置',
-      XUNFEI_API_SECRET: process.env.XUNFEI_API_SECRET ? '已配置' : '未配置',
-      XUNFEI_API_KEY: process.env.XUNFEI_API_KEY ? '已配置' : '未配置'
+    // 详细的环境变量检查和调试
+    console.log('🔍 原始环境变量检查:', {
+      'process.env.XFYUN_APP_ID': process.env.XFYUN_APP_ID || 'undefined',
+      'process.env.XFYUN_API_SECRET': process.env.XFYUN_API_SECRET ? `${process.env.XFYUN_API_SECRET.substring(0,4)}****` : 'undefined',
+      'process.env.XFYUN_API_KEY': process.env.XFYUN_API_KEY ? `${process.env.XFYUN_API_KEY.substring(0,4)}****` : 'undefined',
+      'process.env.XUNFEI_API_SECRET': process.env.XUNFEI_API_SECRET ? `${process.env.XUNFEI_API_SECRET.substring(0,4)}****` : 'undefined',
+      'process.env.XUNFEI_API_KEY': process.env.XUNFEI_API_KEY ? `${process.env.XUNFEI_API_KEY.substring(0,4)}****` : 'undefined'
     });
     
-    if (!XFYUN_APP_ID || !XFYUN_API_SECRET || !XFYUN_API_KEY) {
+    console.log('🔑 最终配置值:', {
+      XFYUN_APP_ID: XFYUN_APP_ID ? `已配置: ${XFYUN_APP_ID}` : '未配置',
+      XFYUN_API_SECRET: XFYUN_API_SECRET ? `已配置: ${XFYUN_API_SECRET.substring(0,4)}****` : '未配置', 
+      XFYUN_API_KEY: XFYUN_API_KEY ? `已配置: ${XFYUN_API_KEY.substring(0,4)}****` : '未配置'
+    });
+    
+    // 更宽松的配置检查：只要有secret和key就行，app_id有默认值
+    const hasValidConfig = XFYUN_API_SECRET && XFYUN_API_KEY;
+    
+    if (!hasValidConfig) {
       console.warn('⚠️ 科大讯飞API配置不完整，使用模拟响应');
+      console.warn('缺少的配置:', {
+        needSecret: !XFYUN_API_SECRET,
+        needKey: !XFYUN_API_KEY
+      });
       const mockResponse = getMockVoiceRecognitionResponse();
       return NextResponse.json({
         success: true,
