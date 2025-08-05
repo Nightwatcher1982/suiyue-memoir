@@ -14,7 +14,9 @@
     "analyze": "ANALYZE=true npm run build",
     "prepare-release": "npm run build && npm run type-check",
     "deploy": "tcb framework deploy --verbose",
-    "deploy:framework": "tcb framework deploy --verbose"
+    "deploy:framework": "tcb framework deploy --verbose",
+    "ws-proxy": "node websocket-proxy-server.js",
+    "dev:full": "concurrently \"npm run dev\" \"npm run ws-proxy\""
   },
   "dependencies": {
     "@alicloud/ocr20191230": "^4.0.0",
@@ -51,6 +53,7 @@
     "@types/node": "^20.17.9",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
+    "concurrently": "^9.2.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.4.4",
     "postcss": "^8.0.0",

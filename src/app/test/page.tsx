@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useAuthReal } from '@/hooks/useAuthReal';
 import { databaseService } from '@/lib/cloudbase/database';
+import { ProfessionalVoiceInput } from '@/components/ai/ProfessionalVoiceInput';
 
 export default function TestPage() {
   const { user, loading, isClient } = useAuthReal();
   const [testResult, setTestResult] = useState<string>('');
   const [isTesting, setIsTesting] = useState(false);
+  const [voiceResult, setVoiceResult] = useState<string>('');
 
   const testDatabaseConnection = async () => {
     setIsTesting(true);
@@ -38,6 +40,11 @@ export default function TestPage() {
     } finally {
       setIsTesting(false);
     }
+  };
+
+  const handleVoiceTranscription = (text: string) => {
+    setVoiceResult(text);
+    console.log('🎤 语音识别结果:', text);
   };
 
   if (!isClient) {
@@ -75,11 +82,29 @@ export default function TestPage() {
           )}
         </div>
 
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">WebSocket语音识别测试</h2>
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-4">
+              测试WebSocket代理实时语音识别功能（需要WebSocket代理服务器运行在端口8080）
+            </p>
+            <ProfessionalVoiceInput onTranscriptionComplete={handleVoiceTranscription} />
+          </div>
+          
+          {voiceResult && (
+            <div className="mt-4 p-4 bg-green-50 rounded border border-green-200">
+              <h3 className="font-semibold text-green-800 mb-2">识别结果：</h3>
+              <p className="text-green-700">{voiceResult}</p>
+            </div>
+          )}
+        </div>
+
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">环境信息</h2>
           <div className="space-y-2 text-sm">
             <p><strong>环境ID:</strong> {process.env.NEXT_PUBLIC_CLOUDBASE_ENV_ID || 'suiyue-memoir-dev-3e9aoud20837ef'}</p>
             <p><strong>Node环境:</strong> {process.env.NODE_ENV}</p>
+            <p><strong>WebSocket代理:</strong> ws://localhost:8080/ws-proxy</p>
             <p><strong>构建时间:</strong> {new Date().toLocaleString()}</p>
           </div>
         </div>

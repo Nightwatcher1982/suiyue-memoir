@@ -1,89 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG, checkConfig } from '@/lib/config';
 
-// 通义千问Paraformer语音识别配置
-const DASHSCOPE_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription';
+// DashScope语音识别API配置
+const DASHSCOPE_FILE_ASR_URL = 'https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription'; // 文件识别
+const DASHSCOPE_TASK_URL = 'https://dashscope.aliyuncs.com/api/v1/tasks'; // 任务状态查询
+const DASHSCOPE_WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference'; // WebSocket实时识别
 const DASHSCOPE_API_KEY = API_CONFIG.DASHSCOPE.API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🎤 通义千问Paraformer语音识别 API 被调用');
+    console.log('🎤 DashScope语音识别 API 被调用');
     
-    const formData = await request.formData();
-    const audioFile = formData.get('audio') as File;
-    const uploadType = formData.get('uploadType') as string || 'recording';
-    const duration = formData.get('duration') as string || '0';
+    const body = await request.json();
+    const { audioUrl, recognitionType, uploadType = 'recording', duration = '0' } = body;
     
-    if (!audioFile) {
+    if (!audioUrl) {
       return NextResponse.json({
         success: false,
-        error: '缺少音频文件'
+        error: '缺少音频文件URL'
       }, { status: 400 });
     }
 
-    console.log('📁 接收到音频文件:', {
-      name: audioFile.name,
-      size: audioFile.size,
-      type: audioFile.type,
+    console.log('📁 接收到请求:', {
+      audioUrl: audioUrl.substring(0, 100) + '...',
+      recognitionType: recognitionType,
       uploadType: uploadType,
       duration: duration
     });
 
-    // 使用统一的配置检查
+    // 检查API配置
     const configStatus = checkConfig();
     
-    console.log('🔑 通义千问API配置状态:', {
-      DASHSCOPE_API_KEY: DASHSCOPE_API_KEY ? `已配置: ${DASHSCOPE_API_KEY.substring(0,4)}****` : '未配置'
-    });
-    
     if (!configStatus.dashscope.complete) {
-      console.warn('⚠️ 通义千问API配置不完整，使用模拟响应');
-      console.warn('配置状态:', configStatus.dashscope);
-      const mockResponse = getMockVoiceRecognitionResponse();
+      console.error('❌ DashScope API配置不完整');
       return NextResponse.json({
-        success: true,
-        text: mockResponse,
-        confidence: 0.95,
-        timestamp: new Date().toISOString(),
-        source: 'mock-response',
-        fallback: true,
-        reason: 'API配置不完整，需要配置 DASHSCOPE_API_KEY'
-      });
+        success: false,
+        error: 'API配置不完整，需要配置 DASHSCOPE_API_KEY'
+      }, { status: 500 });
     }
 
     console.log('🔑 API配置检查通过，开始语音识别');
 
-    // 转换音频文件为Buffer
-    const audioBuffer = await audioFile.arrayBuffer();
-    const audioData = Buffer.from(audioBuffer);
+    let recognitionResult;
     
-    // 检查音频数据大小是否合理
-    if (audioData.length < 100) {
-      return NextResponse.json({
-        success: false,
-        error: '音频数据太短，请录制更长的音频',
-      }, { status: 400 });
+    // 根据识别类型选择不同的处理方式
+    if (recognitionType === 'realtime') {
+      console.log('🚀 使用实时识别模式（模拟WebSocket）');
+      // 对于录音功能，我们先使用文件识别作为替代方案
+      // 因为在服务端实现WebSocket比较复杂，后续可以优化为真正的实时识别
+      recognitionResult = await performFileASR(audioUrl, 'paraformer-realtime-v2');
+    } else {
+      console.log('🚀 使用文件识别模式');
+      recognitionResult = await performFileASR(audioUrl, 'sensevoice-v1');
     }
-
-    if (audioData.length > 2000000000) { // 2GB限制
-      return NextResponse.json({
-        success: false,
-        error: '音频数据太大，请录制较短的音频（最大2GB）',
-      }, { status: 400 });
-    }
-
-    console.log('🚀 调用通义千问Paraformer语音识别服务');
     
-    // 直接调用真实的通义千问Paraformer API，不使用降级策略
-    const recognitionResult = await performParaformerASR(audioData, audioFile.type);
-    console.log('✅ 通义千问语音识别完成');
+    console.log('✅ DashScope语音识别完成');
     
     return NextResponse.json({
       success: true,
       text: recognitionResult.text,
       confidence: recognitionResult.confidence,
       timestamp: new Date().toISOString(),
-      source: 'dashscope-paraformer',
+      source: recognitionResult.source,
       duration: recognitionResult.duration,
       wordCount: recognitionResult.wordCount,
       model: recognitionResult.model
@@ -92,7 +70,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ 语音识别错误:', error);
     
-    // 返回真实的错误信息
     return NextResponse.json({
       success: false,
       error: '语音识别失败',
@@ -103,15 +80,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 通义千问Paraformer语音识别实现
-async function performParaformerASR(audioData: Buffer, mimeType: string): Promise<{ text: string; confidence: number; duration: number; wordCount: number; model: string }> {
+// DashScope文件语音识别实现
+async function performFileASR(audioUrl: string, model: string): Promise<{ text: string; confidence: number; duration: number; wordCount: number; model: string; source: string }> {
   const startTime = Date.now();
   
   try {
-    console.log('📤 准备提交Paraformer语音识别任务');
+    console.log(`📤 准备提交${model}语音识别任务`);
     
     // 第一步：提交识别任务
-    const taskResponse = await submitParaformerTask(audioData, mimeType);
+    const taskResponse = await submitFileASRTask(audioUrl, model);
     console.log('✅ 任务提交成功，任务ID:', taskResponse.task_id);
     
     // 第二步：轮询任务状态直到完成
@@ -120,75 +97,83 @@ async function performParaformerASR(audioData: Buffer, mimeType: string): Promis
     const duration = Math.round((Date.now() - startTime) / 1000);
     const wordCount = result.text.length;
     
-    console.log('✅ Paraformer识别完成:', result.text);
+    console.log(`✅ ${model}识别完成:`, result.text);
     
     return {
       text: result.text || '未识别到语音内容',
       confidence: 0.95,
       duration,
       wordCount,
-      model: 'paraformer-v2'
+      model: model,
+      source: 'dashscope-file-asr'
     };
     
   } catch (error) {
-    console.error('❌ Paraformer识别失败:', error);
+    console.error(`❌ ${model}识别失败:`, error);
     throw error;
   }
 }
 
-// 提交语音识别任务
-async function submitParaformerTask(audioData: Buffer, mimeType: string): Promise<{ task_id: string }> {
-  // 使用multipart/form-data格式上传
-  const boundary = '----formdata-' + Math.random().toString(36);
+// 提交文件语音识别任务
+async function submitFileASRTask(audioUrl: string, model: string): Promise<{ task_id: string }> {
+  console.log(`📤 准备提交${model}语音识别任务，音频URL:`, audioUrl.substring(0, 100) + '...');
   
-  let body = '';
-  body += `--${boundary}\r\n`;
-  body += `Content-Disposition: form-data; name="model"\r\n\r\n`;
-  body += `paraformer-v2\r\n`;
-  
-  body += `--${boundary}\r\n`;
-  body += `Content-Disposition: form-data; name="language_hints"\r\n\r\n`;
-  body += `zh\r\n`;
-  
-  body += `--${boundary}\r\n`;
-  body += `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n`;
-  body += `Content-Type: ${mimeType}\r\n\r\n`;
-  
-  // 将body转换为Buffer
-  const bodyPrefix = Buffer.from(body, 'utf8');
-  const bodySuffix = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
-  
-  // 组合完整的请求体
-  const fullBody = Buffer.concat([bodyPrefix, audioData, bodySuffix]);
-  
-  const response = await fetch(DASHSCOPE_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
-      'Content-Type': `multipart/form-data; boundary=${boundary}`,
-      'X-DashScope-Async': 'enable'
-    },
-    body: fullBody
-  });
-  
-  console.log('📋 任务提交响应状态:', response.status);
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ 任务提交失败:', response.status, errorText);
-    throw new Error(`Paraformer任务提交失败: ${response.status} ${errorText}`);
+  try {
+    // 根据模型选择合适的参数
+    const requestBody = {
+      model: model,
+      input: {
+        file_urls: [audioUrl]
+      },
+      parameters: {
+        language_hints: ['zh']
+      }
+    };
+
+    // 对于paraformer模型，可能需要不同的参数
+    if (model === 'paraformer-realtime-v2') {
+      // paraformer实时模型的特殊参数
+      requestBody.parameters = {
+        ...requestBody.parameters,
+        format: 'pcm',
+        sample_rate: 16000,
+        language_hints: ['zh']
+      };
+    }
+
+    console.log(`📤 ${model}请求参数:`, JSON.stringify(requestBody, null, 2));
+    
+    const response = await fetch(DASHSCOPE_FILE_ASR_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+        'Content-Type': 'application/json',
+        'X-DashScope-Async': 'enable'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ ${model}任务提交失败:`, response.status, errorText);
+      throw new Error(`${model}任务提交失败: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log(`✅ ${model}任务提交成功:`, result);
+    
+    if (!result.output?.task_id) {
+      throw new Error('API返回格式异常：缺少task_id');
+    }
+    
+    return {
+      task_id: result.output.task_id
+    };
+    
+  } catch (error) {
+    console.error(`❌ 提交${model}任务失败:`, error);
+    throw error;
   }
-  
-  const responseData = await response.json();
-  console.log('📋 任务提交响应:', responseData);
-  
-  if (!responseData.output || !responseData.output.task_id) {
-    throw new Error('任务提交响应格式异常，缺少task_id');
-  }
-  
-  return {
-    task_id: responseData.output.task_id
-  };
 }
 
 // 轮询任务状态
@@ -197,7 +182,7 @@ async function pollTaskStatus(taskId: string, maxAttempts: number = 30): Promise
     console.log(`🔍 轮询任务状态 (${attempt}/${maxAttempts}): ${taskId}`);
     
     try {
-      const response = await fetch(`${DASHSCOPE_API_URL}/${taskId}`, {
+      const response = await fetch(`${DASHSCOPE_TASK_URL}/${taskId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${DASHSCOPE_API_KEY}`
@@ -215,10 +200,50 @@ async function pollTaskStatus(taskId: string, maxAttempts: number = 30): Promise
       
       if (statusData.output?.task_status === 'SUCCEEDED') {
         // 任务完成，解析结果
-        const transcription = statusData.output?.results?.[0]?.transcription;
-        if (!transcription) {
-          throw new Error('识别结果为空');
+        const results = statusData.output?.results;
+        if (!results || results.length === 0) {
+          throw new Error('没有找到识别结果');
         }
+        
+        const transcriptionUrl = results[0].transcription_url;
+        if (!transcriptionUrl) {
+          throw new Error('没有找到识别结果URL');
+        }
+        
+        console.log('📥 获取识别结果URL:', transcriptionUrl);
+        
+        // 获取实际的识别结果
+        const transcriptionResponse = await fetch(transcriptionUrl);
+        if (!transcriptionResponse.ok) {
+          throw new Error(`获取识别结果失败: ${transcriptionResponse.status}`);
+        }
+        
+        const transcriptionData = await transcriptionResponse.json();
+        
+        // 解析识别结果 - 支持新的响应格式
+        let transcription = '';
+        if (transcriptionData.transcription) {
+          transcription = transcriptionData.transcription;
+        } else if (transcriptionData.text) {
+          transcription = transcriptionData.text;
+        } else if (transcriptionData.result) {
+          transcription = transcriptionData.result;
+        } else if (transcriptionData.transcripts && Array.isArray(transcriptionData.transcripts)) {
+          // 处理新的 transcripts 数组格式
+          transcription = transcriptionData.transcripts
+            .map((item: any) => item.text || item.sentence || item.transcript || '')
+            .filter((text: string) => text.trim())
+            .join(' ');
+        } else if (transcriptionData.properties && transcriptionData.properties.audio_duration) {
+          // 如果只有属性信息，返回空结果
+          transcription = '';
+        } else {
+          console.error('❌ 无法解析识别结果，可用字段:', Object.keys(transcriptionData));
+          console.error('📋 完整响应数据:', JSON.stringify(transcriptionData, null, 2));
+          throw new Error('无法解析识别结果');
+        }
+        
+        console.log('✅ 解析到识别结果:', transcription.substring(0, 100) + (transcription.length > 100 ? '...' : ''));
         
         return {
           text: transcription
@@ -248,66 +273,6 @@ async function pollTaskStatus(taskId: string, maxAttempts: number = 30): Promise
   throw new Error('任务轮询超时，请稍后重试');
 }
 
-// 生成增强的模拟响应（表明API密钥已正确配置）
-function generateEnhancedMockResponse(audioSize: number): string {
-  const sizeInKB = Math.round(audioSize / 1024);
-  const estimatedDuration = Math.round(audioSize / 32000); // 假设16k采样率
-  
-  return `【通义千问Paraformer语音识别结果】
-
-✅ API配置状态：完全配置
-- DashScope API Key: 已配置并验证
-- 模型：paraformer-v2
-- 语言：中文(zh)
-
-🎤 音频信息分析：
-- 文件大小：${sizeInKB}KB
-- 预估时长：约${estimatedDuration}秒
-- 音频格式：已检测并支持
-- 最大文件大小：2GB
-
-🔄 识别过程模拟：
-正在提交Paraformer识别任务...
-正在上传音频文件...
-正在轮询任务状态...
-正在解析识别结果...
-
-📝 模拟识别内容：
-"这是一段测试语音内容，展示了通义千问Paraformer语音识别的强大功能。基于新一代非自回归端到端模型，提供高精度的中文语音识别能力。"
-
-⚡ 技术特性：
-✅ 新一代非自回归端到端模型
-✅ 高精度语音识别
-✅ 支持多种音频格式
-✅ 异步任务处理
-✅ 中英文混合识别
-✅ 自动标点符号预测
-
-🔧 生产环境说明：
-当前API密钥已正确配置，在生产环境中将直接调用通义千问Paraformer真实服务。
-
-置信度：95% (高置信度表示API配置正确)`;
-}
-
-function getMockVoiceRecognitionResponse(): string {
-  return `【通义千问语音识别模拟结果】
-
-在真实的通义千问Paraformer语音识别中，这里会显示您录音或上传文件的实际转写内容。
-
-当前功能状态：
-✅ 支持录音和文件上传
-✅ 支持多种音频格式（最大2GB）
-✅ 高精度语音识别 (95%+)
-✅ 异步任务处理机制
-✅ 支持中英文混合识别
-✅ 自动标点符号预测
-✅ 新一代端到端模型
-
-要启用真实的语音识别功能，需要配置环境变量：
-- DASHSCOPE_API_KEY=your-api-key （需要配置）
-
-⚠️ 注意：这是模拟响应，请配置通义千问DashScope API密钥获得实际语音识别功能。`;
-}
 
 // 获取API信息
 export async function GET(request: NextRequest) {
@@ -331,7 +296,8 @@ export async function GET(request: NextRequest) {
     config: {
       dashscopeApiKey: DASHSCOPE_API_KEY ? '已配置' : '未配置'
     },
-    apiUrl: DASHSCOPE_API_URL
+    apiUrl: DASHSCOPE_FILE_ASR_URL,
+    taskUrl: DASHSCOPE_TASK_URL
   });
 }
 

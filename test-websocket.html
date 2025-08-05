@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket代理测试</title>
+</head>
+<body>
+    <h1>WebSocket代理测试</h1>
+    <button onclick="testConnection()">测试连接</button>
+    <div id="log"></div>
+    
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+        
+        function testConnection() {
+            log('开始测试WebSocket代理连接...');
+            
+            const ws = new WebSocket('ws://localhost:8080/ws-proxy');
+            
+            ws.onopen = function() {
+                log('✅ WebSocket连接已建立');
+            };
+            
+            ws.onmessage = function(event) {
+                log('📡 收到消息: ' + event.data);
+            };
+            
+            ws.onerror = function(error) {
+                log('❌ WebSocket错误: ' + error);
+            };
+            
+            ws.onclose = function(event) {
+                log('🔌 WebSocket连接关闭: ' + event.code + ' - ' + event.reason);
+            };
+            
+            // 5秒后关闭连接
+            setTimeout(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    log('测试完成，关闭连接');
+                    ws.close();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
