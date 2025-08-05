@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { authPersistence } from '@/lib/auth-persistence';
 import { EditorWithUpload } from '@/components/editor/EditorWithUpload';
 import { PDFExporter } from '@/components/editor/PDFExporter';
 import { ChapterManager } from '@/components/memoir/ChapterManager';
@@ -20,10 +21,21 @@ interface EditorPageProps {
 
 function EditorContent({ params }: EditorPageProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  
+  // 尝试从持久化系统立即获取用户状态以减少等待时间
+  const [initialUser, setInitialUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return authPersistence.getUser();
+    }
+    return null;
+  });
+  
+  // 使用优先用户状态（优先使用auth hook的状态，fallback到初始状态）
+  const currentUser = user || initialUser;
   
   // 添加调试信息
-  console.log('🔍 EditorContent 组件渲染，user:', user);
+  console.log('🔍 EditorContent 组件渲染，user:', user, 'initialUser:', initialUser, 'currentUser:', currentUser, 'loading:', loading);
   console.log('🔍 EditorContent params:', params);
   const [project, setProject] = useState<MemoirProject | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -32,15 +44,30 @@ function EditorContent({ params }: EditorPageProps) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showPDFExporter, setShowPDFExporter] = useState(false);
 
+  // 同步initialUser状态
+  useEffect(() => {
+    if (user && !initialUser) {
+      setInitialUser(user);
+    }
+  }, [user, initialUser]);
+
   // 从数据库加载数据
   useEffect(() => {
-    console.log('🔍 编辑页面 useEffect 触发，用户状态:', user ? '已登录' : '未登录');
-    if (!user) {
-      console.log('⚠️ 用户未登录，等待认证...');
+    console.log('🔍 编辑页面 useEffect 触发，currentUser:', currentUser ? '已登录' : '未登录', 'loading:', loading);
+    
+    // 如果还在加载中且没有初始用户，等待加载完成
+    if (loading && !currentUser) {
+      console.log('⏳ 用户状态加载中，等待完成...');
+      return;
+    }
+    
+    // 如果加载完成但用户未登录，显示登录提示
+    if (!currentUser) {
+      console.log('⚠️ 用户未登录');
       return;
     }
 
-    console.log('✅ 用户已登录，开始加载数据，用户ID:', user.id);
+    console.log('✅ 用户已登录，开始加载数据，用户ID:', currentUser.id);
     const loadData = async () => {
       try {
         const resolvedParams = await params;
@@ -69,7 +96,7 @@ function EditorContent({ params }: EditorPageProps) {
           
           const newProject: MemoirProject = {
             id: resolvedParams.projectId,
-            userId: user.id,
+            userId: currentUser.id,
             title: '新建回忆录',
             description: '记录我的人生故事',
             status: 'writing',
@@ -169,7 +196,7 @@ function EditorContent({ params }: EditorPageProps) {
     };
 
     loadData();
-  }, [user, params]);
+  }, [currentUser, loading, params]);
 
   // 自动保存功能
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -327,7 +354,20 @@ function EditorContent({ params }: EditorPageProps) {
     setChapters(reorderedChapters);
   };
 
-  if (!user) {
+  // 如果还在加载用户状态且没有初始用户，显示加载界面
+  if (loading && !currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在验证登录状态...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果用户未登录，显示登录提示
+  if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
