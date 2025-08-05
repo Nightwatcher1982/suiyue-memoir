@@ -34,8 +34,23 @@ function EditorContent({ params }: EditorPageProps) {
   // 使用优先用户状态（优先使用auth hook的状态，fallback到初始状态）
   const currentUser = user || initialUser;
   
+  // 立即尝试获取用户状态，不依赖React hooks的初始化时机
+  const [clientInitialized, setClientInitialized] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !clientInitialized) {
+      setClientInitialized(true);
+      // 强制同步获取用户状态
+      const persistedUser = authPersistence.getUser();
+      if (persistedUser && !user && !initialUser) {
+        setInitialUser(persistedUser);
+        console.log('🔧 强制同步获取到持久化用户:', persistedUser);
+      }
+    }
+  }, [clientInitialized, user, initialUser]);
+  
   // 添加调试信息
-  console.log('🔍 EditorContent 组件渲染，user:', user, 'initialUser:', initialUser, 'currentUser:', currentUser, 'loading:', loading);
+  console.log('🔍 EditorContent 组件渲染，user:', user, 'initialUser:', initialUser, 'currentUser:', currentUser, 'loading:', loading, 'clientInitialized:', clientInitialized);
   console.log('🔍 EditorContent params:', params);
   const [project, setProject] = useState<MemoirProject | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -55,8 +70,8 @@ function EditorContent({ params }: EditorPageProps) {
   useEffect(() => {
     console.log('🔍 编辑页面 useEffect 触发，currentUser:', currentUser ? '已登录' : '未登录', 'loading:', loading);
     
-    // 如果还在加载中且没有初始用户，等待加载完成
-    if (loading && !currentUser) {
+    // 如果还在加载中且没有用户状态，并且客户端还未初始化，等待完成
+    if (loading && !currentUser && !clientInitialized) {
       console.log('⏳ 用户状态加载中，等待完成...');
       return;
     }
@@ -196,7 +211,7 @@ function EditorContent({ params }: EditorPageProps) {
     };
 
     loadData();
-  }, [currentUser, loading, params]);
+  }, [currentUser, loading, params, clientInitialized]);
 
   // 自动保存功能
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -354,8 +369,8 @@ function EditorContent({ params }: EditorPageProps) {
     setChapters(reorderedChapters);
   };
 
-  // 如果还在加载用户状态且没有初始用户，显示加载界面
-  if (loading && !currentUser) {
+  // 如果还在加载用户状态且没有用户且客户端未初始化，显示加载界面
+  if ((loading && !currentUser && !clientInitialized) || (!clientInitialized && typeof window !== 'undefined')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
