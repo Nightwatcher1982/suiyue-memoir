@@ -336,7 +336,7 @@ export class AuthService {
   }
 
   // 登出
-  async signOut() {
+  async logout() {
     try {
       await this.auth.signOut();
       console.log('用户已登出');
@@ -344,6 +344,11 @@ export class AuthService {
       console.error('登出失败:', error);
       throw error;
     }
+  }
+  
+  // 保持兼容性的别名
+  async signOut() {
+    return this.logout();
   }
 }
 

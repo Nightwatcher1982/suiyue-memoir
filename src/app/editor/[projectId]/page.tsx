@@ -86,6 +86,18 @@ function EditorContent({ params }: EditorPageProps) {
     const loadData = async () => {
       try {
         const resolvedParams = await params;
+        
+        // 首先确保CloudBase认证状态
+        console.log('🔐 确保CloudBase认证状态...');
+        try {
+          const { authService } = await import('@/lib/cloudbase/auth');
+          const cloudbaseUser = await authService.ensureAuthenticated();
+          console.log('✅ CloudBase认证成功:', cloudbaseUser ? '已认证' : '认证失败');
+        } catch (authError) {
+          console.warn('⚠️ CloudBase认证失败，可能影响数据库操作:', authError);
+          // 继续执行，但可能会在数据库操作时失败
+        }
+        
         console.log('📦 开始动态导入数据库服务...');
         const { databaseService } = await import('@/lib/cloudbase/database');
         console.log('✅ 数据库服务导入成功');
@@ -100,9 +112,21 @@ function EditorContent({ params }: EditorPageProps) {
           loadedProject = await databaseService.getProjectById(resolvedParams.projectId);
           loadedChapters = await databaseService.getProjectChapters(resolvedParams.projectId);
           console.log('✅ 成功从数据库加载项目和章节');
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ 数据库加载失败:', error);
-          throw error; // 重新抛出错误，不再使用模拟数据
+          
+          // 如果是认证错误，提示用户重新登录
+          if (error.message?.includes('auth') || error.message?.includes('request without auth')) {
+            console.error('🔐 CloudBase认证失败，项目访问被拒绝');
+            alert('认证已过期，请重新登录');
+            // 清除本地用户状态并跳转到首页
+            const { authPersistence } = await import('@/lib/auth-persistence');
+            authPersistence.clearUser();
+            window.location.href = '/';
+            return;
+          }
+          
+          throw error; // 重新抛出其他错误
         }
         
         // 如果数据库中没有项目，创建一个基础项目
