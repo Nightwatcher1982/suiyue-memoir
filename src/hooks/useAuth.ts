@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { authPersistence } from '@/lib/auth-persistence';
 import type { User } from '@/types';
 
 export function useAuthState() {
@@ -13,36 +14,49 @@ export function useAuthState() {
     // 标记为客户端环境
     setIsClient(true);
     
-    // 检查认证状态 - 结合本地存储和CloudBase认证
+    // 使用持久化系统检查认证状态
     const checkAuthState = async () => {
       try {
-        // 首先检查本地存储
-        const savedUser = localStorage.getItem('suiyue_user');
-        let localUser = null;
-        if (savedUser) {
-          localUser = JSON.parse(savedUser);
-        }
+        const localUser = authPersistence.getUser();
         
-        // 如果有本地用户，尝试确保CloudBase也已认证
         if (localUser) {
           try {
             const { authService } = await import('@/lib/cloudbase/auth');
             await authService.ensureAuthenticated();
             setUser(localUser);
-            console.log('✅ 用户认证状态已同步');
+            console.log('✅ 用户认证状态已同步:', localUser);
           } catch (error) {
             console.warn('CloudBase认证失败，但本地用户存在:', error);
             setUser(localUser); // 仍然设置本地用户
           }
+        } else {
+          console.log('📝 没有本地用户数据');
+          setUser(null);
         }
       } catch (error) {
         console.error('获取认证状态失败:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
     checkAuthState();
+    
+    // 监听用户状态变化
+    const removeListener = authPersistence.addListener((newUser) => {
+      console.log('📨 用户状态变化监听:', newUser);
+      setUser(newUser);
+    });
+    
+    // 监听自定义用户变化事件
+    const handleUserChange = (event: CustomEvent) => {
+      const { user: newUser } = event.detail;
+      console.log('🔔 收到用户变化事件:', newUser);
+      setUser(newUser);
+    };
+
+    window.addEventListener('suiyue-user-change', handleUserChange as EventListener);
     
     // 初始化CloudBase
     import('@/lib/cloudbase/init').then(({ initializeCloudBase }) => {
@@ -54,6 +68,12 @@ export function useAuthState() {
         }
       });
     });
+
+    // 清理函数
+    return () => {
+      removeListener();
+      window.removeEventListener('suiyue-user-change', handleUserChange as EventListener);
+    };
   }, []);
 
   const sendSmsCode = async (phone: string): Promise<boolean> => {
@@ -121,21 +141,21 @@ export function useAuthState() {
         updatedAt: new Date(),
       };
       
-      // 保存到本地存储
-      if (isClient) {
-        localStorage.setItem('suiyue_user', JSON.stringify(newUser));
-      }
-      
+      // 使用持久化系统保存用户信息
+      authPersistence.saveUser(newUser);
       setUser(newUser);
+      
       // 清除验证信息
       setVerificationInfo(null);
       console.log('🎉 登录成功:', newUser);
       
-      // 触发页面重新渲染，确保所有组件能获取到最新的用户状态
-      setTimeout(() => {
-        console.log('🔄 强制更新页面状态');
-        setUser({...newUser}); // 触发重新渲染
-      }, 100);
+      // 使用Promise确保状态更新完成
+      await new Promise(resolve => {
+        setTimeout(() => {
+          console.log('🔄 状态更新完成，用户信息:', newUser);
+          resolve(true);
+        }, 50);
+      });
       
       return true;
 
@@ -171,11 +191,11 @@ export function useAuthState() {
         updatedAt: new Date(),
       };
       
-      // 保存到本地存储
-      if (isClient) {
-        localStorage.setItem('suiyue_user', JSON.stringify(newUser));
-      }
+      // 使用持久化系统保存用户信息
+      authPersistence.saveUser(newUser);
       setUser(newUser);
+      
+      console.log('🎉 微信登录成功:', newUser);
       return true;
     } catch (error) {
       console.error('微信登录失败:', error);
@@ -185,13 +205,31 @@ export function useAuthState() {
 
   const logout = async (): Promise<void> => {
     try {
-      // TODO: 调用CloudBase登出API
-      if (isClient) {
-        localStorage.removeItem('suiyue_user');
+      console.log('🚪 开始登出...');
+      
+      // 调用CloudBase登出API
+      try {
+        const { authService } = await import('@/lib/cloudbase/auth');
+        await authService.logout();
+        console.log('✅ CloudBase登出成功');
+      } catch (error) {
+        console.warn('CloudBase登出失败，但继续清理本地状态:', error);
       }
+      
+      // 使用持久化系统清理用户信息
+      authPersistence.clearUser();
+      
+      // 清理状态
       setUser(null);
+      setVerificationInfo(null);
+      
+      console.log('✅ 登出完成');
     } catch (error) {
       console.error('登出失败:', error);
+      // 即使失败也要清理本地状态
+      authPersistence.clearUser();
+      setUser(null);
+      setVerificationInfo(null);
     }
   };
 

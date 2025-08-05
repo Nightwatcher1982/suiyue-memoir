@@ -172,9 +172,5 @@ function HomePage() {
 }
 
 export default function Home() {
-  return (
-    <AuthProvider>
-      <HomePage />
-    </AuthProvider>
-  );
+  return <HomePage />;
 }

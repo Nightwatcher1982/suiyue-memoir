@@ -63,6 +63,8 @@ function DashboardContent() {
 
   // 用户登录状态变化时加载数据
   useEffect(() => {
+    console.log('🔍 Dashboard用户状态检查:', { user: !!user, loading, userInfo: user });
+    
     if (user) {
       console.log('✅ 用户已登录，加载工作台数据:', user);
       setShowLoginModal(false); // 确保关闭登录框
@@ -72,6 +74,23 @@ function DashboardContent() {
       setShowLoginModal(true);
     }
   }, [user, loading, loadUserData]);
+
+  // 添加额外的用户状态监听以确保及时响应状态变化
+  useEffect(() => {
+    const handleUserChange = () => {
+      const savedUser = localStorage.getItem('suiyue_user');
+      if (savedUser && !user) {
+        console.log('🔄 检测到本地用户数据但当前状态为空，触发重新检查');
+        // 触发重新检查认证状态
+        window.location.reload();
+      }
+    };
+
+    // 延迟检查以确保所有状态都已稳定
+    const timeoutId = setTimeout(handleUserChange, 1000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [user]);
 
   // 创建新项目
   const handleCreateProject = async (projectData: {
