@@ -138,7 +138,7 @@ async function submitFileASRTask(audioUrl: string, model: string): Promise<{ tas
         format: 'pcm',
         sample_rate: 16000,
         language_hints: ['zh']
-      };
+      } as any; // 临时使用any类型避免TypeScript编译错误
     }
 
     console.log(`📤 ${model}请求参数:`, JSON.stringify(requestBody, null, 2));
