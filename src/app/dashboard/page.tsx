@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { databaseService } from '@/lib/cloudbase/database';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { CreateProjectModal } from '@/components/memoir/CreateProjectModal';
+import { WorkflowGuide } from '@/components/memoir/WorkflowGuide';
 import { Button } from '@/components/ui/Button';
 import type { MemoirProject } from '@/types';
 import { generateId } from '@/lib/utils';
@@ -245,6 +246,15 @@ function DashboardContent() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* 工作流引导 */}
+        <div className="mb-8">
+          <WorkflowGuide 
+            onCreateProject={() => setShowCreateModal(true)}
+            className={projects.length === 0 ? 'ring-2 ring-blue-300 ring-opacity-50' : ''}
+            autoExpand={projects.length === 0}
+          />
         </div>
 
         {/* 项目列表 */}
