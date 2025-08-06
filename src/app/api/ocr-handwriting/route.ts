@@ -12,9 +12,17 @@ const API_VERSION = '2021-07-07';
 export async function POST(request: NextRequest) {
   try {
     console.log('📝 阿里云手写体识别 API 被调用');
+    console.log('🔧 环境检查:', {
+      hasAccessKeyId: !!ALIBABA_ACCESS_KEY_ID,
+      hasAccessKeySecret: !!ALIBABA_ACCESS_KEY_SECRET,
+      endpoint: OCR_ENDPOINT,
+      region: OCR_REGION,
+      apiVersion: API_VERSION
+    });
     
     // 检查环境变量配置
     if (!ALIBABA_ACCESS_KEY_ID || !ALIBABA_ACCESS_KEY_SECRET) {
+      console.error('❌ 环境变量未配置');
       return NextResponse.json(
         { 
           success: false,
@@ -76,11 +84,20 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ 手写体识别 API错误:', error);
+    console.error('❌ 错误详情:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { 
         success: false,
         error: '手写体识别处理失败',
-        message: error instanceof Error ? error.message : '未知错误'
+        message: error instanceof Error ? error.message : '未知错误',
+        debug: process.env.NODE_ENV === 'development' ? {
+          name: error instanceof Error ? error.name : 'Unknown',
+          stack: error instanceof Error ? error.stack : undefined
+        } : undefined
       },
       { status: 500 }
     );

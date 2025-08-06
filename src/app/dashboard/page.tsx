@@ -97,7 +97,6 @@ function DashboardContent() {
   const handleCreateProject = async (projectData: {
     title: string;
     description: string;
-    coverStyle: string;
   }) => {
     if (!user) return;
 
@@ -110,7 +109,7 @@ function DashboardContent() {
         userId: user.id,
         title: projectData.title,
         description: projectData.description,
-        coverStyle: projectData.coverStyle,
+        coverStyle: 'classic', // 使用默认封面风格
         status: 'active',
         wordCount: 0,
         chapterCount: 0,
