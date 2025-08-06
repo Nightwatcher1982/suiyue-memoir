@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { PhotoUploadModal } from '@/components/photos/PhotoUploadModal';
 import { PhotoViewModal } from '@/components/photos/PhotoViewModal';
 import { PhotoEditModal } from '@/components/photos/PhotoEditModal';
+import { PhotoWall } from '@/components/photos/PhotoWall';
+import { BatchUploadModal } from '@/components/photos/BatchUploadModal';
 import { SmartImage } from '@/components/photos/SmartImage';
 import { formatDate } from '@/lib/utils';
 import type { Photo } from '@/types';
@@ -16,6 +18,7 @@ export default function PhotoArchivePage() {
   const [filteredPhotos, setFilteredPhotos] = useState<Photo[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showBatchUploadModal, setShowBatchUploadModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
@@ -26,7 +29,8 @@ export default function PhotoArchivePage() {
   const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'created'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'wall'>('wall');
+  const [groupBy, setGroupBy] = useState<'decade' | 'year' | 'location' | 'people' | 'tags'>('decade');
 
   // 加载用户照片
   const loadPhotos = async () => {
@@ -117,6 +121,10 @@ export default function PhotoArchivePage() {
 
   const handlePhotoUploaded = (newPhoto: Photo) => {
     setPhotos(prev => [newPhoto, ...prev]);
+  };
+
+  const handlePhotosUploaded = (newPhotos: Photo[]) => {
+    setPhotos(prev => [...newPhotos, ...prev]);
   };
 
   const handlePhotoUpdated = (updatedPhoto: Photo) => {
@@ -212,8 +220,14 @@ export default function PhotoArchivePage() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Button onClick={() => setShowUploadModal(true)}>
-                📤 上传照片
+              <Button
+                variant="outline"
+                onClick={() => setShowUploadModal(true)}
+              >
+                📤 单张上传
+              </Button>
+              <Button onClick={() => setShowBatchUploadModal(true)}>
+                📁 批量上传
               </Button>
             </div>
           </div>
@@ -270,8 +284,29 @@ export default function PhotoArchivePage() {
                 <option value="name-desc">名称 Z-A</option>
               </select>
 
+              {/* 分组方式 */}
+              {viewMode === 'wall' && (
+                <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value as any)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="decade">按年代分组</option>
+                  <option value="year">按年份分组</option>
+                  <option value="location">按地点分组</option>
+                  <option value="people">按人物分组</option>
+                  <option value="tags">按标签分组</option>
+                </select>
+              )}
+
               {/* 视图模式 */}
               <div className="flex border border-gray-300 rounded-md">
+                <button
+                  onClick={() => setViewMode('wall')}
+                  className={`px-3 py-2 text-sm ${viewMode === 'wall' ? 'bg-blue-500 text-white' : 'text-gray-700'}`}
+                >
+                  照片墙
+                </button>
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`px-3 py-2 text-sm ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'text-gray-700'}`}
@@ -349,11 +384,23 @@ export default function PhotoArchivePage() {
               {photos.length === 0 ? '上传您的第一张照片开始建立档案' : '尝试调整搜索条件或清空过滤器'}
             </p>
             {photos.length === 0 && (
-              <Button onClick={() => setShowUploadModal(true)}>
-                📤 上传照片
-              </Button>
+              <div className="space-x-3">
+                <Button onClick={() => setShowUploadModal(true)}>
+                  📤 单张上传
+                </Button>
+                <Button variant="outline" onClick={() => setShowBatchUploadModal(true)}>
+                  📁 批量上传
+                </Button>
+              </div>
             )}
           </div>
+        ) : viewMode === 'wall' ? (
+          <PhotoWall
+            photos={filteredPhotos}
+            groupBy={groupBy}
+            onPhotoClick={handleViewPhoto}
+            onPhotosUpdate={setPhotos}
+          />
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredPhotos.map((photo) => (
@@ -457,6 +504,12 @@ export default function PhotoArchivePage() {
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onPhotoUploaded={handlePhotoUploaded}
+      />
+
+      <BatchUploadModal
+        isOpen={showBatchUploadModal}
+        onClose={() => setShowBatchUploadModal(false)}
+        onPhotosUploaded={handlePhotosUploaded}
       />
 
       {selectedPhoto && (
