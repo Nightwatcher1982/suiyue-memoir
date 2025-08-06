@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Qwen-VL-OCR手写体识别健康检查');
     
-    const hasDashscopeKey = !!(process.env.DASHSCOPE_API_KEY || API_CONFIG.TONGYI.API_KEY);
+    const hasDashscopeKey = !!(process.env.DASHSCOPE_API_KEY || API_CONFIG.DASHSCOPE.API_KEY);
     
     return NextResponse.json({
       service: 'qwen-vl-ocr-handwriting',

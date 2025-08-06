@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/config';
 
 // 使用阿里云Qwen-VL-OCR模型进行手写体识别
-const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY || API_CONFIG.TONGYI.API_KEY;
+const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY || API_CONFIG.DASHSCOPE.API_KEY;
 const QWEN_VL_OCR_ENDPOINT = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
 
 export async function POST(request: NextRequest) {
@@ -160,7 +160,22 @@ function parseQwenVLOCRResponse(responseData: any) {
     const choice = responseData.output.choices[0];
     if (choice.message && choice.message.content) {
       const content = choice.message.content;
-      const extractedText = typeof content === 'string' ? content.trim() : String(content).trim();
+      
+      // 处理content数组格式
+      let extractedText = '';
+      if (Array.isArray(content)) {
+        // content是数组，提取所有text字段
+        extractedText = content
+          .filter(item => item && typeof item === 'object' && item.text)
+          .map(item => item.text)
+          .join(' ')
+          .trim();
+      } else if (typeof content === 'string') {
+        extractedText = content.trim();
+      } else {
+        extractedText = String(content).trim();
+      }
+      
       console.log('✅ Qwen-VL-OCR解析成功');
       console.log('- 提取的文本长度:', extractedText.length);
       console.log('- 提取的文本:', extractedText.substring(0, 200) + (extractedText.length > 200 ? '...' : ''));
