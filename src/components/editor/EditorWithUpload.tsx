@@ -5,6 +5,7 @@ import { TipTapEditor, type TipTapEditorRef } from './TipTapEditor';
 import { PhotoUploadEnhanced } from './PhotoUploadEnhanced';
 import { PhotoPickerModal } from '@/components/photos/PhotoPickerModal';
 import { OCRUpload } from './OCRUpload';
+import { HandwritingOCR } from './HandwritingOCR';
 import { AIWritingAssistant } from '@/components/ai/AIWritingAssistant';
 import { VoiceInputContainer } from '@/components/ai/VoiceInputContainer';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +33,7 @@ export function EditorWithUpload({
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [showOCRUpload, setShowOCRUpload] = useState(false);
+  const [showHandwritingOCR, setShowHandwritingOCR] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const editorRef = useRef<TipTapEditorRef>(null);
 
@@ -110,6 +112,30 @@ export function EditorWithUpload({
     }
   };
 
+  const handleHandwritingTextExtracted = (text: string) => {
+    // 将手写体识别的文字添加到编辑器
+    setShowHandwritingOCR(false);
+    
+    console.log('🖋️ 开始插入手写体文字到编辑器:', text.length, '个字符');
+    
+    // 通过ref调用编辑器的insertText方法
+    if (editorRef.current) {
+      editorRef.current.insertText(text);
+      console.log('✅ 手写体文字已通过ref插入到编辑器');
+    } else {
+      // 兜底方案：直接更新content
+      console.log('⚠️ 编辑器ref不可用，使用兜底方案');
+      const htmlText = text
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => `<p>${line.trim()}</p>`)
+        .join('');
+      
+      const newContent = content ? `${content}${htmlText}` : htmlText;
+      onChange?.(newContent);
+    }
+  };
+
   return (
     <div className={cn('space-y-4', className)}>
       {/* 工具栏 */}
@@ -144,7 +170,15 @@ export function EditorWithUpload({
             variant="outline"
             onClick={() => setShowOCRUpload(!showOCRUpload)}
           >
-            📸 {showOCRUpload ? '关闭文字识别' : '图片识字'}
+            📸 {showOCRUpload ? '关闭通用识字' : '通用识字'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowHandwritingOCR(!showHandwritingOCR)}
+            className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+          >
+            🖋️ {showHandwritingOCR ? '关闭手写识别' : '手写体识别'}
           </Button>
           <AIWritingAssistant
             content={content}
@@ -185,6 +219,13 @@ export function EditorWithUpload({
       {showOCRUpload && (
         <div className="border border-gray-200 rounded-lg p-4 bg-white">
           <OCRUpload onTextExtracted={handleOCRTextExtracted} />
+        </div>
+      )}
+
+      {/* 手写体识别组件 */}
+      {showHandwritingOCR && (
+        <div className="border border-purple-200 rounded-lg p-4 bg-gradient-to-r from-purple-50 to-indigo-50">
+          <HandwritingOCR onTextExtracted={handleHandwritingTextExtracted} />
         </div>
       )}
 
