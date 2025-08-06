@@ -67,7 +67,7 @@ export function HandwritingOCR({ onTextExtracted, className }: HandwritingOCRPro
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('/api/ocr-handwriting', {
+      const response = await fetch('/api/ocr-handwriting-v2', {
         method: 'POST',
         body: formData,
       });
@@ -186,7 +186,7 @@ export function HandwritingOCR({ onTextExtracted, className }: HandwritingOCRPro
                   支持 JPG、PNG、GIF、WebP、BMP、TIFF 格式，最大 10MB
                 </p>
                 <p className="text-xs text-purple-600 font-medium mt-2">
-                  🎯 专门优化手写体识别，准确率高达98%
+                  🤖 基于通义千问VL-OCR模型，专业手写体识别
                 </p>
               </>
             )}
@@ -293,16 +293,16 @@ export function HandwritingOCR({ onTextExtracted, className }: HandwritingOCRPro
       <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-200">
         <h4 className="font-medium text-purple-900 mb-2">🖋️ 手写体识别专业提示</h4>
         <ul className="text-sm text-purple-800 space-y-1">
-          <li>• 🎯 <strong>专业算法</strong>：采用阿里云专业手写体识别引擎，准确率高达98%</li>
-          <li>• ✍️ <strong>支持多种手写体</strong>：中文手写、英文手写、数字手写等</li>
-          <li>• 📝 <strong>智能优化</strong>：自动图片增强、旋转校正、噪音过滤</li>
+          <li>• 🤖 <strong>先进模型</strong>：基于通义千问VL-OCR，专业手写体识别引擎</li>
+          <li>• 🌍 <strong>多语言支持</strong>：中文、英文、数字及多种语言手写体</li>
+          <li>• 📝 <strong>智能识别</strong>：自动理解上下文，提高识别准确率</li>
           <li>• 📱 <strong>复杂场景</strong>：支持笔记本、黑板、便条纸等各种背景</li>
           <li>• 💡 <strong>最佳效果</strong>：建议上传清晰、对比度高的手写体图片</li>
         </ul>
         
         <div className="mt-3 p-2 bg-purple-100 rounded text-xs text-purple-700">
-          <strong>💎 与通用识别的区别：</strong>
-          通用识别适合印刷体文字，手写体识别专门针对手写内容优化，对笔迹、字体变化有更强的适应性。
+          <strong>💎 技术优势：</strong>
+          采用通义千问VL-OCR多模态大模型，相比传统OCR具有更强的上下文理解能力和手写体适应性。
         </div>
       </div>
     </div>
