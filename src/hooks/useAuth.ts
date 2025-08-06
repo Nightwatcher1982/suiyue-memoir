@@ -22,12 +22,25 @@ export function useAuthState() {
         if (localUser) {
           try {
             const { authService } = await import('@/lib/cloudbase/auth');
-            await authService.ensureAuthenticated();
+            
+            // 首先检查CloudBase是否已认证
+            const isCloudBaseAuth = authService.isAuthenticated();
+            console.log('🔍 CloudBase认证状态:', isCloudBaseAuth);
+            
+            if (!isCloudBaseAuth) {
+              console.log('🔄 CloudBase未认证，尝试恢复认证状态...');
+              // 尝试恢复认证状态（匿名登录作为后备）
+              await authService.ensureAuthenticated();
+            }
+            
             setUser(localUser);
             console.log('✅ 用户认证状态已同步:', localUser);
           } catch (error) {
             console.warn('CloudBase认证失败，但本地用户存在:', error);
-            setUser(localUser); // 仍然设置本地用户
+            // 如果CloudBase认证完全失败，清除本地用户状态
+            console.warn('⚠️ 由于CloudBase认证失败，清除本地用户状态');
+            authPersistence.clearUser();
+            setUser(null);
           }
         } else {
           console.log('📝 没有本地用户数据');

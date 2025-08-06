@@ -91,11 +91,30 @@ function EditorContent({ params }: EditorPageProps) {
         console.log('🔐 确保CloudBase认证状态...');
         try {
           const { authService } = await import('@/lib/cloudbase/auth');
-          const cloudbaseUser = await authService.ensureAuthenticated();
-          console.log('✅ CloudBase认证成功:', cloudbaseUser ? '已认证' : '认证失败');
+          
+          // 检查当前认证状态
+          const isAuth = authService.isAuthenticated();
+          console.log('🔍 当前CloudBase认证状态:', isAuth);
+          
+          if (!isAuth) {
+            console.log('🔄 尝试建立CloudBase认证...');
+            const cloudbaseUser = await authService.ensureAuthenticated();
+            console.log('✅ CloudBase认证成功:', cloudbaseUser ? '已认证' : '认证失败');
+            
+            if (!cloudbaseUser) {
+              throw new Error('CloudBase认证失败');
+            }
+          } else {
+            console.log('✅ CloudBase已认证');
+          }
         } catch (authError) {
-          console.warn('⚠️ CloudBase认证失败，可能影响数据库操作:', authError);
-          // 继续执行，但可能会在数据库操作时失败
+          console.error('❌ CloudBase认证完全失败:', authError);
+          // 认证失败时清除本地状态并重定向
+          const { authPersistence } = await import('@/lib/auth-persistence');
+          authPersistence.clearUser();
+          alert('认证失败，请重新登录');
+          window.location.href = '/';
+          return;
         }
         
         console.log('📦 开始动态导入数据库服务...');
