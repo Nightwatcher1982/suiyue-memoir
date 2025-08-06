@@ -9,6 +9,43 @@ export class StorageService {
     return getStorage();
   }
 
+  // 通用文件上传方法
+  async uploadFile(cloudPath: string, file: File): Promise<{
+    success: boolean;
+    fileId?: string;
+    message?: string;
+  }> {
+    try {
+      // 确保用户已认证
+      await authService.ensureAuthenticated();
+      
+      // 检查文件大小 (最大50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        return {
+          success: false,
+          message: '文件大小不能超过50MB'
+        };
+      }
+
+      // 上传文件
+      const result = await this.storage.uploadFile({
+        cloudPath,
+        filePath: file,
+      });
+      
+      return {
+        success: true,
+        fileId: result.fileID,
+      };
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '上传失败'
+      };
+    }
+  }
+
   // 上传图片文件
   async uploadPhoto(file: File, userId: string, chapterId?: string): Promise<{
     fileId: string;

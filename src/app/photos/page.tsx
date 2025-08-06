@@ -510,6 +510,7 @@ export default function PhotoArchivePage() {
         isOpen={showBatchUploadModal}
         onClose={() => setShowBatchUploadModal(false)}
         onPhotosUploaded={handlePhotosUploaded}
+        userId={user?.id}
       />
 
       {selectedPhoto && (

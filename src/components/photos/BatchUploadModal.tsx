@@ -20,9 +20,10 @@ interface BatchUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPhotosUploaded: (photos: Photo[]) => void;
+  userId?: string;
 }
 
-export function BatchUploadModal({ isOpen, onClose, onPhotosUploaded }: BatchUploadModalProps) {
+export function BatchUploadModal({ isOpen, onClose, onPhotosUploaded, userId }: BatchUploadModalProps) {
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
@@ -92,11 +93,13 @@ export function BatchUploadModal({ isOpen, onClose, onPhotosUploaded }: BatchUpl
         f.id === uploadFile.id ? { ...f, status: 'uploading', progress: 0 } : f
       ));
 
+      // 检查用户ID
+      if (!userId) {
+        throw new Error('用户未登录');
+      }
+
       // 动态导入存储服务
       const { storageService } = await import('@/lib/cloudbase/storage');
-      
-      // 上传文件到云存储
-      const fileName = `photos/${Date.now()}-${uploadFile.file.name}`;
       
       // 模拟上传进度
       const progressInterval = setInterval(() => {
@@ -108,29 +111,34 @@ export function BatchUploadModal({ isOpen, onClose, onPhotosUploaded }: BatchUpl
         }));
       }, 200);
 
-      const uploadResult = await storageService.uploadFile(fileName, uploadFile.file);
+      // 使用uploadPhoto方法上传文件
+      const uploadResult = await storageService.uploadPhoto(
+        uploadFile.file,
+        userId,
+        undefined // chapterId
+      );
+      
       clearInterval(progressInterval);
 
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.message || '上传失败');
-      }
-
-      // 获取下载URL
-      const downloadUrl = await storageService.getDownloadUrl(uploadResult.fileId!);
+      // uploadPhoto返回的结构已经包含downloadUrl
+      const downloadUrl = uploadResult.downloadUrl;
 
       // 创建照片数据
       const photoData = {
         name: uploadFile.name,
         description: '',
         url: downloadUrl,
-        fileId: uploadResult.fileId!,
-        fileName: uploadFile.file.name,
-        fileSize: uploadFile.file.size,
+        fileId: uploadResult.fileId,
+        storageUrl: downloadUrl,
+        fileName: uploadResult.fileName,
+        fileSize: uploadResult.fileSize,
         mimeType: uploadFile.file.type,
-        location: globalSettings.applyToAll ? globalSettings.location : '',
-        relatedPeople: globalSettings.applyToAll ? globalSettings.relatedPeople : [],
-        tags: globalSettings.applyToAll ? globalSettings.tags : [],
+        location: globalSettings.applyToAll ? globalSettings.location : undefined,
+        relatedPeople: globalSettings.applyToAll && globalSettings.relatedPeople.length > 0 ? globalSettings.relatedPeople : undefined,
+        tags: globalSettings.applyToAll && globalSettings.tags.length > 0 ? globalSettings.tags : undefined,
         photographyDate: null, // 用户稍后可以编辑
+        userId: userId,
+        uploadedAt: new Date(),
       };
 
       // 保存到数据库
