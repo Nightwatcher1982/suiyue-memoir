@@ -136,7 +136,7 @@ export function BatchUploadModal({ isOpen, onClose, onPhotosUploaded, userId }: 
         location: globalSettings.applyToAll ? globalSettings.location : undefined,
         relatedPeople: globalSettings.applyToAll && globalSettings.relatedPeople.length > 0 ? globalSettings.relatedPeople : undefined,
         tags: globalSettings.applyToAll && globalSettings.tags.length > 0 ? globalSettings.tags : undefined,
-        photographyDate: null, // 用户稍后可以编辑
+        photographyDate: undefined, // 用户稍后可以编辑
         userId: userId,
         uploadedAt: new Date(),
       };

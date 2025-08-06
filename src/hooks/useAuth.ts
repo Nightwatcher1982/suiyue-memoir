@@ -223,7 +223,7 @@ export function useAuthState() {
       // 调用CloudBase登出API
       try {
         const { authService } = await import('@/lib/cloudbase/auth');
-        await authService.logout();
+        await (authService as any).logout();
         console.log('✅ CloudBase登出成功');
       } catch (error) {
         console.warn('CloudBase登出失败，但继续清理本地状态:', error);

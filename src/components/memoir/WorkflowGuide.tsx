@@ -84,6 +84,9 @@ export function WorkflowGuide({ onCreateProject, className = '', autoExpand = fa
       window.location.href = step.actionHref;
     } else if (step.id === 1 && onCreateProject) {
       onCreateProject();
+    } else if (step.id === 2) {
+      // 整理档案步骤，提供多个选项
+      return;
     }
   };
 
@@ -184,7 +187,23 @@ export function WorkflowGuide({ onCreateProject, className = '', autoExpand = fa
                       </div>
 
                       <div className="flex flex-col justify-center">
-                        {step.actionText && (
+                        {step.id === 2 ? (
+                          <div className="space-y-3">
+                            <Button
+                              onClick={() => window.location.href = '/photos'}
+                              className="w-full md:w-auto"
+                            >
+                              📸 照片档案
+                            </Button>
+                            <Button
+                              onClick={() => window.location.href = '/relationships'}
+                              className="w-full md:w-auto"
+                              variant="outline"
+                            >
+                              👥 人物关系
+                            </Button>
+                          </div>
+                        ) : step.actionText && (
                           <Button
                             onClick={() => handleActionClick(step)}
                             className="w-full md:w-auto"
@@ -208,8 +227,11 @@ export function WorkflowGuide({ onCreateProject, className = '', autoExpand = fa
                           <div className="mt-4">
                             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                               <h6 className="font-medium text-green-900 mb-2">📝 整理建议</h6>
-                              <p className="text-sm text-green-700">
+                              <p className="text-sm text-green-700 mb-2">
                                 按时间顺序整理照片，记录每张照片的背景故事，这会让写作更加生动。
+                              </p>
+                              <p className="text-sm text-green-700">
+                                建立人物关系图谱，记录重要人物的故事和关系，为写作提供丰富的素材。
                               </p>
                             </div>
                           </div>

@@ -271,6 +271,12 @@ function DashboardContent() {
                 </Button>
                 <Button 
                   variant="outline"
+                  onClick={() => window.location.href = '/relationships'}
+                >
+                  👥 人物关系
+                </Button>
+                <Button 
+                  variant="outline"
                   onClick={() => window.location.href = '/photo-materials'}
                 >
                   🔧 照片修复
