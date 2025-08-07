@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // 通义千问API配置 - 支持多种环境变量名称
 const QIANWEN_API_KEY = process.env.TONGYI_ACCESS_KEY_ID || 
                        process.env.QIANWEN_API_KEY || 
-                       process.env.DASHSCOPE_API_KEY ||
-                       'sk-c93c5888d56348d19e4857492a456214';
+                       process.env.DASHSCOPE_API_KEY;
 const QIANWEN_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
 export async function POST(request: NextRequest) {

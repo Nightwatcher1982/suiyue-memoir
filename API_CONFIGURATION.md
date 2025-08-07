@@ -15,7 +15,7 @@
 4. 创建API Key
 
 ### 2. 当前配置
-- **API Key**: `sk-c93c5888d56348d19e4857492a456214` ✅ 已配置
+- **API Key**: `sk-****` ✅ 已配置
 - **模型**: `qwen-turbo`
 - **功能**: 文本润色、扩写、总结
 
@@ -60,7 +60,7 @@ NEXT_PUBLIC_CLOUDBASE_ENV_ID=suiyue-memoir-dev-3e9aoud20837ef
 NODE_ENV=production
 
 # AI服务
-QIANWEN_API_KEY=sk-c93c5888d56348d19e4857492a456214
+QIANWEN_API_KEY=your_dashscope_api_key
 
 # OCR服务（可选）
 ALIBABA_ACCESS_KEY_ID=your_access_key_id

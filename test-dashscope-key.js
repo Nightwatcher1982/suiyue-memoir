@@ -1,6 +1,6 @@
 // 测试DASHSCOPE API Key是否有效
 async function testDashscopeKey() {
-  const DASHSCOPE_API_KEY = 'sk-c93c5888d56348d19e4857492a456214';
+  const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
   
   const requestBody = {
     model: "qwen-vl-ocr",
