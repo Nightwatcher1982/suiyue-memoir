@@ -47,20 +47,8 @@ const nextConfig = {
   // 优化构建输出 - standalone用于CloudBase容器部署
   output: 'standalone',
 
-  // 环境变量配置 - 确保API服务环境变量在standalone模式下可用
-  env: {
-    // API服务环境变量
-    DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY,
-    TONGYI_ACCESS_KEY_ID: process.env.TONGYI_ACCESS_KEY_ID,
-    QIANWEN_API_KEY: process.env.QIANWEN_API_KEY,
-    ALIBABA_ACCESS_KEY_ID: process.env.ALIBABA_ACCESS_KEY_ID,
-    ALIBABA_ACCESS_KEY_SECRET: process.env.ALIBABA_ACCESS_KEY_SECRET,
-    ALIBABA_CLOUD_ACCESS_KEY_ID: process.env.ALIBABA_CLOUD_ACCESS_KEY_ID,
-    ALIBABA_CLOUD_ACCESS_KEY_SECRET: process.env.ALIBABA_CLOUD_ACCESS_KEY_SECRET,
-    XFYUN_APP_ID: process.env.XFYUN_APP_ID,
-    XFYUN_API_SECRET: process.env.XFYUN_API_SECRET,
-    XFYUN_API_KEY: process.env.XFYUN_API_KEY,
-  },
+  // 注释：移除env配置，改用运行时环境变量访问
+  // Next.js standalone模式下使用serverRuntimeConfig更可靠
 
   // 开发指示器配置已在新版本中移除
 

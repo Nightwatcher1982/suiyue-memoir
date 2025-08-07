@@ -142,7 +142,7 @@ jobs:
       run: |
         tcb login --key --secretId "$CLOUDBASE_SECRET_ID" --secretKey "$CLOUDBASE_SECRET_KEY"
         
-    - name: 设置容器环境变量
+    - name: 替换cloudbaserc.json中的环境变量
       env:
         TONGYI_ACCESS_KEY_ID: ${{ secrets.TONGYI_ACCESS_KEY_ID }}
         ALIBABA_ACCESS_KEY_ID: ${{ secrets.ALIBABA_ACCESS_KEY_ID }}
@@ -151,19 +151,8 @@ jobs:
         XFYUN_API_SECRET: ${{ secrets.XFYUN_API_SECRET }}
         XFYUN_API_KEY: ${{ secrets.XFYUN_API_KEY }}
       run: |
-        echo "设置容器环境变量..."
-        
-        # 设置必需的环境变量
-        if [ ! -z "$TONGYI_ACCESS_KEY_ID" ]; then
-          echo "设置 TONGYI_ACCESS_KEY_ID"
-          # 这里在实际环境中需要使用 CloudBase CLI 设置环境变量
-        fi
-        
-        if [ ! -z "$ALIBABA_ACCESS_KEY_ID" ]; then
-          echo "设置 ALIBABA_ACCESS_KEY_ID"
-        fi
-        
-        echo "✅ 环境变量设置完成"
+        echo "替换cloudbaserc.json中的环境变量占位符..."
+        node scripts/replace-env-vars.js
         
     - name: 部署到 CloudBase
       run: |
