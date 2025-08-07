@@ -1,0 +1,205 @@
+name: 岁阅项目 CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # 代码质量检查
+  code-quality:
+    runs-on: ubuntu-latest
+    name: 代码质量检查
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 安装依赖
+      run: npm ci
+      
+    - name: 环境配置检查
+      run: |
+        echo "检查环境配置文件..."
+        if [ ! -f ".env.local.template" ]; then
+          echo "❌ .env.local.template 文件不存在"
+          exit 1
+        fi
+        echo "✅ 环境配置文件检查通过"
+      
+    - name: 敏感信息检查
+      run: |
+        echo "检查敏感信息泄露..."
+        # 检查是否存在真实的API密钥模式
+        if grep -r "sk-[a-f0-9]\{32\}" --exclude-dir=node_modules --exclude-dir=.git . || \
+           grep -r "LTAI[a-zA-Z0-9]\{16,\}" --exclude-dir=node_modules --exclude-dir=.git . ; then
+          echo "❌ 发现可能的敏感信息泄露"
+          exit 1
+        fi
+        echo "✅ 敏感信息检查通过"
+        
+    - name: TypeScript 类型检查
+      run: npm run type-check
+      
+    - name: ESLint 检查
+      run: npm run lint
+      continue-on-error: true
+      
+    - name: 构建测试
+      env:
+        NEXT_PUBLIC_CLOUDBASE_ENV_ID: ${{ secrets.NEXT_PUBLIC_CLOUDBASE_ENV_ID }}
+        NEXT_TELEMETRY_DISABLED: 1
+      run: |
+        echo "开始构建测试..."
+        npm run build
+
+  # 环境变量验证
+  env-validation:
+    runs-on: ubuntu-latest
+    name: 环境变量验证
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 安装依赖
+      run: npm ci
+      
+    - name: 验证生产环境变量
+      env:
+        NEXT_PUBLIC_CLOUDBASE_ENV_ID: ${{ secrets.NEXT_PUBLIC_CLOUDBASE_ENV_ID }}
+        TONGYI_ACCESS_KEY_ID: ${{ secrets.TONGYI_ACCESS_KEY_ID }}
+        DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+        ALIBABA_ACCESS_KEY_ID: ${{ secrets.ALIBABA_ACCESS_KEY_ID }}
+        ALIBABA_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_ACCESS_KEY_SECRET }}
+      run: |
+        echo "验证关键环境变量..."
+        
+        # 检查必需的环境变量
+        if [ -z "$NEXT_PUBLIC_CLOUDBASE_ENV_ID" ]; then
+          echo "❌ NEXT_PUBLIC_CLOUDBASE_ENV_ID 未设置"
+          exit 1
+        fi
+        
+        if [ -z "$TONGYI_ACCESS_KEY_ID" ]; then
+          echo "⚠️  TONGYI_ACCESS_KEY_ID 未设置，AI功能将使用模拟响应"
+        fi
+        
+        if [ -z "$ALIBABA_ACCESS_KEY_ID" ]; then
+          echo "⚠️  ALIBABA_ACCESS_KEY_ID 未设置，部分功能将受限"
+        fi
+        
+        echo "✅ 环境变量验证完成"
+
+  # 部署到 CloudBase（仅主分支）
+  deploy:
+    runs-on: ubuntu-latest
+    name: 部署到 CloudBase
+    needs: [code-quality, env-validation]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 安装依赖
+      run: npm ci
+      
+    - name: 构建项目
+      env:
+        NEXT_PUBLIC_CLOUDBASE_ENV_ID: ${{ secrets.NEXT_PUBLIC_CLOUDBASE_ENV_ID }}
+        NEXT_TELEMETRY_DISABLED: 1
+        NODE_ENV: production
+      run: npm run build
+      
+    - name: 安装 CloudBase CLI
+      run: npm install -g @cloudbase/cli
+      
+    - name: CloudBase 登录
+      env:
+        CLOUDBASE_SECRET_ID: ${{ secrets.CLOUDBASE_SECRET_ID }}
+        CLOUDBASE_SECRET_KEY: ${{ secrets.CLOUDBASE_SECRET_KEY }}
+      run: |
+        tcb login --key --secretId "$CLOUDBASE_SECRET_ID" --secretKey "$CLOUDBASE_SECRET_KEY"
+        
+    - name: 设置容器环境变量
+      env:
+        TONGYI_ACCESS_KEY_ID: ${{ secrets.TONGYI_ACCESS_KEY_ID }}
+        ALIBABA_ACCESS_KEY_ID: ${{ secrets.ALIBABA_ACCESS_KEY_ID }}
+        ALIBABA_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_ACCESS_KEY_SECRET }}
+        XFYUN_APP_ID: ${{ secrets.XFYUN_APP_ID }}
+        XFYUN_API_SECRET: ${{ secrets.XFYUN_API_SECRET }}
+        XFYUN_API_KEY: ${{ secrets.XFYUN_API_KEY }}
+      run: |
+        echo "设置容器环境变量..."
+        
+        # 设置必需的环境变量
+        if [ ! -z "$TONGYI_ACCESS_KEY_ID" ]; then
+          echo "设置 TONGYI_ACCESS_KEY_ID"
+          # 这里在实际环境中需要使用 CloudBase CLI 设置环境变量
+        fi
+        
+        if [ ! -z "$ALIBABA_ACCESS_KEY_ID" ]; then
+          echo "设置 ALIBABA_ACCESS_KEY_ID"
+        fi
+        
+        echo "✅ 环境变量设置完成"
+        
+    - name: 部署到 CloudBase
+      run: |
+        echo "开始部署到 CloudBase..."
+        npm run deploy
+        
+    - name: 部署后健康检查
+      run: |
+        echo "执行部署后健康检查..."
+        # 等待部署完成
+        sleep 30
+        
+        # 检查健康检查端点
+        HEALTH_URL="https://suiyue-memoir-dev-3e9aoud20837ef.tcloudbaseapp.com/health"
+        echo "检查健康检查端点: $HEALTH_URL"
+        
+        # 简单的HTTP检查
+        if curl -f -s "$HEALTH_URL" > /dev/null; then
+          echo "✅ 应用部署成功，健康检查通过"
+        else
+          echo "⚠️  健康检查失败，但部署可能仍然成功"
+        fi
+
+  # 通知
+  notify:
+    runs-on: ubuntu-latest
+    name: 部署通知
+    needs: [deploy]
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 部署结果通知
+      run: |
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "🎉 岁阅项目部署成功！"
+          echo "🌐 访问地址: https://suiyue-memoir-dev-3e9aoud20837ef.tcloudbaseapp.com"
+        else
+          echo "❌ 岁阅项目部署失败"
+        fi

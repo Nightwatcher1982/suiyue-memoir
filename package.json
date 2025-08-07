@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-simple.js",
+    "dev:manager": "node scripts/dev-manager.js",
+    "dev:legacy": "next dev",
     "dev:fast": "node scripts/dev-fast.js",
-    "dev:clean": "node scripts/dev-fast.js --clean",
+    "dev:clean": "node scripts/dev-manager.js --clean",
+    "dev:simple": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -16,7 +19,13 @@
     "deploy": "tcb framework deploy --verbose",
     "deploy:framework": "tcb framework deploy --verbose",
     "ws-proxy": "node websocket-proxy-server.js",
-    "dev:full": "concurrently \"npm run dev\" \"npm run ws-proxy\""
+    "dev:full": "concurrently \"npm run dev:legacy\" \"npm run ws-proxy\"",
+    "dev:debug": "node scripts/dev-manager.js --debug",
+    "env:init": "node scripts/env-manager.js init",
+    "env:check": "node scripts/env-manager.js check",
+    "env:backup": "node scripts/env-manager.js backup",
+    "env:guide": "node scripts/env-manager.js guide",
+    "env:secure": "node scripts/env-manager.js secure"
   },
   "dependencies": {
     "@alicloud/ocr20191230": "^4.0.0",
