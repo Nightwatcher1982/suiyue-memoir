@@ -27,6 +27,13 @@ jobs:
       run: npm run build
       env:
         NEXT_PUBLIC_CLOUDBASE_ENV_ID: ${{ secrets.CLOUDBASE_ENV_ID }}
+        TONGYI_ACCESS_KEY_ID: ${{ secrets.TONGYI_ACCESS_KEY_ID }}
+        DASHSCOPE_API_KEY: ${{ secrets.TONGYI_ACCESS_KEY_ID }}
+        ALIBABA_ACCESS_KEY_ID: ${{ secrets.ALIBABA_ACCESS_KEY_ID }}
+        ALIBABA_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_ACCESS_KEY_SECRET }}
+        XFYUN_APP_ID: ${{ secrets.XFYUN_APP_ID }}
+        XFYUN_API_SECRET: ${{ secrets.XFYUN_API_SECRET }}
+        XFYUN_API_KEY: ${{ secrets.XFYUN_API_KEY }}
         
     - name: Deploy to CloudBase
       uses: TencentCloudBase/cloudbase-action@v2
