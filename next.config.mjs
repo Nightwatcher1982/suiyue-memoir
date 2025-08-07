@@ -47,9 +47,19 @@ const nextConfig = {
   // 优化构建输出 - standalone用于CloudBase容器部署
   output: 'standalone',
 
-  // 环境变量配置
+  // 环境变量配置 - 确保API服务环境变量在standalone模式下可用
   env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+    // API服务环境变量
+    DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY,
+    TONGYI_ACCESS_KEY_ID: process.env.TONGYI_ACCESS_KEY_ID,
+    QIANWEN_API_KEY: process.env.QIANWEN_API_KEY,
+    ALIBABA_ACCESS_KEY_ID: process.env.ALIBABA_ACCESS_KEY_ID,
+    ALIBABA_ACCESS_KEY_SECRET: process.env.ALIBABA_ACCESS_KEY_SECRET,
+    ALIBABA_CLOUD_ACCESS_KEY_ID: process.env.ALIBABA_CLOUD_ACCESS_KEY_ID,
+    ALIBABA_CLOUD_ACCESS_KEY_SECRET: process.env.ALIBABA_CLOUD_ACCESS_KEY_SECRET,
+    XFYUN_APP_ID: process.env.XFYUN_APP_ID,
+    XFYUN_API_SECRET: process.env.XFYUN_API_SECRET,
+    XFYUN_API_KEY: process.env.XFYUN_API_KEY,
   },
 
   // 开发指示器配置已在新版本中移除
